@@ -175,8 +175,10 @@ const WPPAuth=(()=>{
  try{session=JSON.parse(localStorage.getItem(KEY)||'null');if(session&&session.expires<Date.now())session=null;}catch(e){session=null;}
  async function post(body){
   const url=(window.WPP_CONFIG||{}).API_URL;if(!url)throw new Error('ยังไม่ได้ตั้งค่า API_URL ใน config.js');
-  const res=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),redirect:'follow'});
-  const data=await res.json();
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),60000);let res,data;
+  try{res=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),redirect:'follow',signal:ctl.signal});data=await res.json();}
+  catch(e){throw new Error(e.name==='AbortError'?'เซิร์ฟเวอร์ตอบช้าเกินไป กรุณาลองใหม่':'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ ('+e.message+')');}
+  finally{clearTimeout(timer);}
   if(!data.ok){const e=new Error(data.error||'เกิดข้อผิดพลาด');e.auth=data.auth;throw e;}
   return data.result;
  }
@@ -316,7 +318,9 @@ function submitCheckin(){
 document.addEventListener('DOMContentLoaded',()=>{
  showPage('homePage');autoTerm();updateTermYear();
  const now=new Date(),pad=n=>String(n).padStart(2,'0');document.getElementById('checkinDate').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;document.getElementById('checkinTime').value=`${pad(now.getHours())}:${pad(now.getMinutes())}`;
- google.script.run.withFailureHandler(()=>{document.getElementById('headerViewCount').textContent='ไม่พร้อมใช้งาน';}).withSuccessHandler(count=>{document.getElementById('headerViewCount').textContent=Number(count).toLocaleString('th-TH');}).countViewAndGet();
+ (function loadViews(retry){const el=document.getElementById('headerViewCount');el.textContent='…';
+  google.script.run.withFailureHandler(e=>{console.warn('views',e);if(retry)setTimeout(()=>loadViews(false),3000);else{el.textContent='ไม่พร้อมใช้งาน';el.title=String(e&&e.message||e);el.style.cursor='help';el.onclick=()=>alert('สาเหตุ: '+el.title);}})
+  .withSuccessHandler(count=>{el.textContent=Number(count)>0?Number(count).toLocaleString('th-TH'):'—';}).countViewAndGet();})(true);
 });
 </script><script>
 // Statistics module: same Google Apps Script backend, read-only report endpoints.
