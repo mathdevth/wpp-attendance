@@ -198,15 +198,15 @@ const WPPAuth=(()=>{
    $('authGate').hidden=true;
   }else showGate('');
   $('authLoginForm').addEventListener('submit',async ev=>{ev.preventDefault();const b=$('authSubmit');b.disabled=true;msg('กำลังตรวจสอบ…');
-   try{const r=await post({action:'login',email:$('authEmail').value,password:$('authPassword').value});$('authPassword').value='';save({token:r.token,user:r.user,expires:Date.now()+r.expiresIn*1000-60000});msg('');enter();}
+   try{const r=await post({action:'login',email:$('authEmail').value,password:$('authPassword').value});$('authPassword').value='';save({token:r.token,user:r.user,expires:Date.now()+r.expiresIn*1000-60000});msg('');enter();if(r.mustChange)openPw(true);}
    catch(e){msg(e.message,'err');$('authPassword').select();}finally{b.disabled=false;}});
   $('pwForm').addEventListener('submit',async ev=>{ev.preventDefault();const pm=(t,c)=>{$('pwMsg').textContent=t;$('pwMsg').className=c||'';};
    if($('pwNew').value!==$('pwNew2').value)return pm('รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน','err');
    $('pwSubmit').disabled=true;pm('กำลังบันทึก…');
-   try{await call('changeMyPassword',[$('pwOld').value,$('pwNew').value]);pm('เปลี่ยนรหัสผ่านเรียบร้อยแล้ว','ok');setTimeout(closePw,1200);}
+   try{const r=await call('changeMyPassword',[$('pwOld').value,$('pwNew').value]);save({...session,token:r.token,expires:Date.now()+r.expiresIn*1000-60000});pm('เปลี่ยนรหัสผ่านเรียบร้อยแล้ว','ok');setTimeout(closePw,1200);}
    catch(e){pm(e.message,'err');}finally{$('pwSubmit').disabled=false;}});
  });
- function openPw(){['pwOld','pwNew','pwNew2'].forEach(id=>$(id).value='');$('pwMsg').textContent='';$('pwDialog').hidden=false;$('pwOld').focus();}
+ function openPw(first){['pwOld','pwNew','pwNew2'].forEach(id=>$(id).value='');$('pwMsg').textContent=first?'คุณใช้รหัสผ่านเริ่มต้นอยู่ กรุณาตั้งรหัสผ่านใหม่ของคุณเอง':'';$('pwMsg').className=first?'err':'';$('pwDialog').hidden=false;$('pwOld').focus();}
  function closePw(){$('pwDialog').hidden=true;}
  return {call,logout,openPw,closePw,user:()=>session&&session.user};
 })();
