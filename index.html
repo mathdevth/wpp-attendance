@@ -81,24 +81,31 @@ nav{grid-template-columns:repeat(auto-fit,minmax(0,1fr))}nav button[hidden]{disp
 @media print{#authGate{display:none!important}}
 
 @media print{
- @page{size:A4;margin:12mm 11mm 14mm}
+ @page{size:A4;margin:13mm 12mm 14mm}
  #statsPrint{font-size:10pt;color:#1d2a3d}
- #statsPrint .print-head{display:flex;align-items:center;gap:14px;border-bottom:3px solid #2e86c1;padding-bottom:10px;margin-bottom:12px}
- #statsPrint .print-head img{width:58px;height:58px;object-fit:contain}
- #statsPrint .print-school{font-size:11pt;font-weight:700;color:#c2185b;margin:0}
- #statsPrint h1{font-size:17pt;color:#1f4e79;margin:2px 0 0}
- #statsPrint .print-meta{background:#f2f8fd;border:1px solid #d6e6f5;border-radius:8px;padding:8px 12px;margin:0 0 12px;font-size:9pt}
- #statsPrint .print-meta p{margin:2px 0}
- #statsPrint h2{font-size:12pt;color:#1f4e79;border-left:4px solid #2e86c1;padding-left:8px;margin:16px 0 8px}
- #statsPrint table{width:100%;border-collapse:collapse;font-size:8.5pt;page-break-inside:auto}
+ #statsPrint .print-head{display:grid;grid-template-columns:64px 1fr 64px;align-items:center;gap:12px;padding:0 0 12px;margin:0 0 14px;border-bottom:2.5px solid #2e86c1}
+ #statsPrint .print-logo{width:64px;height:64px;object-fit:contain}
+ #statsPrint .print-titles{text-align:center}
+ #statsPrint .print-school{margin:0;font-size:13pt;font-weight:700;color:#c2185b;text-align:center;line-height:1.35}
+ #statsPrint .print-office{margin:1px 0 0;font-size:8.5pt;color:#6b7a90;text-align:center;line-height:1.3}
+ #statsPrint h1{margin:6px 0 0;font-size:18pt;color:#1f4e79;text-align:center;line-height:1.3}
+ #statsPrint .print-meta{background:#f2f8fd;border:1px solid #d6e6f5;border-radius:8px;padding:9px 14px;margin:0 0 14px;text-align:center}
+ #statsPrint .print-meta p{margin:2px 0;font-size:9.5pt}
+ #statsPrint h2{font-size:12.5pt;color:#1f4e79;border-left:4px solid #2e86c1;padding-left:9px;margin:18px 0 8px;text-align:left;break-after:avoid}
+ #statsPrint table{width:100%;min-width:0;border-collapse:collapse;table-layout:auto;page-break-inside:auto}
  #statsPrint thead{display:table-header-group}
  #statsPrint tr{page-break-inside:avoid}
- #statsPrint th{background:#2e86c1!important;color:#fff!important;font-weight:600;padding:5px 4px;border:1px solid #2a77ab;-webkit-print-color-adjust:exact;print-color-adjust:exact}
- #statsPrint td{padding:4px;border:1px solid #d3e0ee;text-align:center}
- #statsPrint td:first-child{text-align:left}
+ #statsPrint th{background:#2e86c1!important;color:#fff!important;font-weight:600;font-size:8pt;padding:6px 5px;border:1px solid #2a77ab;text-align:center;vertical-align:middle;white-space:normal;line-height:1.3;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ #statsPrint td{font-size:8.5pt;padding:5px 6px;border:1px solid #d3e0ee;text-align:center;vertical-align:middle;white-space:nowrap;color:#1d2a3d!important;overflow-wrap:normal;line-height:1.35}
+ #statsPrint td.c-name,#statsPrint th.c-name{text-align:left;padding-left:8px}
+ #statsPrint td.c-wrap{white-space:normal;text-align:left;min-width:40mm}
  #statsPrint tbody tr:nth-child(even) td{background:#f4f9fe!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ #statsPrint tbody tr.r-total td{background:#e3eef9!important;font-weight:700;color:#1f4e79!important}
+ #statsPrint td.p-low{color:#c62828!important;font-weight:600}
+ #statsPrint td.p-high{color:#2e7d32!important;font-weight:600}
  #statsPrint .bar-fill{-webkit-print-color-adjust:exact;print-color-adjust:exact}
- #statsPrint .print-signature{margin-top:32px;text-align:right;line-height:2}
+ #statsPrint .print-signature{margin-top:34px;text-align:right;line-height:2.1;break-inside:avoid}
+ #statsPrint .print-signature p{font-size:10pt}
  #statsPrint .print-foot{margin-top:18px;border-top:1px solid #d6e6f5;padding-top:6px;font-size:8pt;color:#6b7a90;display:flex;justify-content:space-between}
 }</style></head><body>
 <div id="authGate"><div class="auth-card"><img class="auth-logo" src="logo.png" alt="ตราโรงเรียนวังโพรงพิทยาคม" onerror="this.hidden=true"><h1>WPP Student Attendance</h1><p>โรงเรียนวังโพรงพิทยาคม · สำหรับครูที่ลงทะเบียนแล้ว</p>
@@ -366,11 +373,19 @@ function wppRenderTrend(){const rows=wppTrendRows();if(!rows.length){wppEl('stat
 }
 function wppRenderStudents(){if(!wppStatsReport)return;const query=wppEl('statsStudentSearch').value.trim().toLowerCase(),rows=wppStatsReport.byStudent.filter(x=>(x.room+' '+x.no+' '+x.name).toLowerCase().includes(query));const pageSize=25,pages=Math.max(1,Math.ceil(rows.length/pageSize));wppStudentPage=Math.max(0,Math.min(pages-1,wppStudentPage));wppEl('statsStudentCount').textContent=wppNumber(rows.length)+' แถวสรุป (แยกภาคเรียน)';wppEl('statsStudentTable').innerHTML=wppTable(['ภาคเรียน','ห้อง','เลขที่','ชื่อ–นามสกุล',...wppStatsReport.statuses,'รายการ','มา+สาย %'],wppStudentRows(rows.slice(wppStudentPage*pageSize,(wppStudentPage+1)*pageSize)));wppEl('statsStudentPage').textContent=`หน้า ${wppStudentPage+1} / ${pages}`;wppEl('statsPrev').disabled=wppStudentPage===0;wppEl('statsNext').disabled=wppStudentPage>=pages-1;}
 function wppExportReady(){if(!wppStatsReport||wppStatsChanged||wppStatsBusy){alert('กรุณาสร้างสรุปจากตัวกรองล่าสุดก่อนส่งออก');return false;}return true;}
+
+// จัดตารางก่อนพิมพ์: คอลัมน์ชื่อ/ห้อง ไม่ตัดบรรทัด ข้อความยาวให้ขึ้นบรรทัด ร้อยละมีสี แถวรวมเป็นตัวหนา
+function wppPolishPrint(root){root.querySelectorAll('table').forEach(t=>{const heads=[...t.querySelectorAll('thead th')].map(th=>th.textContent.trim());
+ const nameCols=heads.map(h=>/ชื่อ/.test(h)||/^ห้องที่/.test(h)),pctCols=heads.map(h=>/%/.test(h));
+ t.querySelectorAll('thead th').forEach((th,i)=>{if(nameCols[i])th.classList.add('c-name');if(heads[i].length<=8)th.style.whiteSpace='nowrap';});
+ t.querySelectorAll('tbody tr').forEach(tr=>{const cells=[...tr.children];if(/^รวม/.test((cells[0]||{}).textContent||''))tr.classList.add('r-total');
+  cells.forEach((td,i)=>{const txt=td.textContent.trim();if(nameCols[i])td.classList.add('c-name');if(txt.length>38)td.classList.add('c-wrap');
+   if(pctCols[i]){const v=parseFloat(txt);if(!isNaN(v))td.classList.add(v<80?'p-low':v>=95?'p-high':'p-mid');}});});});}
 function wppPrintReport(){if(!wppExportReady())return;const r=wppStatsReport,title=wppEl('statsReportTitle').value.trim()||'รายงานสรุปสถิติการเข้าแถวของนักเรียน',name=wppEl('statsPreparedBy').value.trim();let target=wppEl('statsPrint');if(!target){target=document.createElement('div');target.id='statsPrint';document.body.appendChild(target);}
- target.innerHTML=`<div class="print-head"><img src="logo.png" alt="" onerror="this.remove()"><div><p class="print-school">โรงเรียนวังโพรงพิทยาคม · สพม.พิษณุโลก อุตรดิตถ์</p><h1>${escapeHtml(title)}</h1></div></div><div class="print-meta"><p>${escapeHtml(wppScopeText(r))}</p><p>สร้างเมื่อ ${escapeHtml(r.generatedAt)} (${escapeHtml(r.timezone)})</p></div><h2>ภาพรวมข้อมูล</h2><div class="stats-metrics">${wppMetricsHTML(r)}</div><div class="stats-notice">${wppQualityHTML(r)}</div><div class="panel print-chart"><h2>สถานะการเข้าแถว (ครั้ง)</h2>${wppStatusBars(r)}</div><div class="panel print-chart"><h2>เปรียบเทียบรายห้อง (มาและสาย %)</h2>${wppRoomBars(r)}</div><div class="panel print-chart"><h2>แนวโน้มการมาเข้าแถว · ${wppEl('statsTrendUnit').value==='month'?'รายเดือน':'รายวัน'}</h2>${wppEl('statsTrendChart').innerHTML}</div><h2>ตารางสรุปรายห้อง</h2>${wppTable(['ห้อง',...r.statuses,'รายการ','มา+สาย %'],r.byRoom.map(x=>[x.room,...x.counts,x.total,wppPercent(x.rate)]))}<h2>หมายเหตุการคำนวณ</h2><p>ร้อยละมาและสาย = (มา + สาย) ÷ รายการที่มีสถานะถูกต้องทั้ง 7 สถานะ × 100 รายการคนละเวลานับแยกกัน รายการคีย์ซ้ำใช้แถวล่างสุด ไม่มีข้อมูลไม่เท่ากับขาดเรียน ทะเบียนใช้รายชื่อปัจจุบัน อ่านจากทะเบียนนักเรียนและประวัติเช็คชื่อ</p><p>จำนวนผู้มีรายการนับจากห้อง เลขที่ และชื่อ ไม่ใช่รหัสนักเรียนถาวร วันที่ไม่มีข้อมูลทั้งโรงเรียนตรวจไม่ได้หากไม่มีปฏิทินวันเรียน รายละเอียดความครอบคลุมรายวันอยู่ในไฟล์ Excel</p>`;
+ target.innerHTML=`<div class="print-head"><img class="print-logo" src="logo.png" alt="" onerror="this.style.visibility='hidden'"><div class="print-titles"><p class="print-school">โรงเรียนวังโพรงพิทยาคม</p><p class="print-office">สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาพิษณุโลก อุตรดิตถ์</p><h1>${escapeHtml(title)}</h1></div><span class="print-spacer"></span></div><div class="print-meta"><p>${escapeHtml(wppScopeText(r))}</p><p>สร้างเมื่อ ${escapeHtml(r.generatedAt)} (${escapeHtml(r.timezone)})</p></div><h2>ภาพรวมข้อมูล</h2><div class="stats-metrics">${wppMetricsHTML(r)}</div><div class="stats-notice">${wppQualityHTML(r)}</div><div class="panel print-chart"><h2>สถานะการเข้าแถว (ครั้ง)</h2>${wppStatusBars(r)}</div><div class="panel print-chart"><h2>เปรียบเทียบรายห้อง (มาและสาย %)</h2>${wppRoomBars(r)}</div><div class="panel print-chart"><h2>แนวโน้มการมาเข้าแถว · ${wppEl('statsTrendUnit').value==='month'?'รายเดือน':'รายวัน'}</h2>${wppEl('statsTrendChart').innerHTML}</div><h2>ตารางสรุปรายห้อง</h2>${wppTable(['ห้อง',...r.statuses,'รายการ','มา+สาย %'],r.byRoom.map(x=>[x.room,...x.counts,x.total,wppPercent(x.rate)]))}<h2>หมายเหตุการคำนวณ</h2><p>ร้อยละมาและสาย = (มา + สาย) ÷ รายการที่มีสถานะถูกต้องทั้ง 7 สถานะ × 100 รายการคนละเวลานับแยกกัน รายการคีย์ซ้ำใช้แถวล่างสุด ไม่มีข้อมูลไม่เท่ากับขาดเรียน ทะเบียนใช้รายชื่อปัจจุบัน อ่านจากทะเบียนนักเรียนและประวัติเช็คชื่อ</p><p>จำนวนผู้มีรายการนับจากห้อง เลขที่ และชื่อ ไม่ใช่รหัสนักเรียนถาวร วันที่ไม่มีข้อมูลทั้งโรงเรียนตรวจไม่ได้หากไม่มีปฏิทินวันเรียน รายละเอียดความครอบคลุมรายวันอยู่ในไฟล์ Excel</p>`;
  if(wppEl('statsIncludeStudents').value==='yes')target.innerHTML+=`<div class="print-persons"><h2>รายละเอียดรายบุคคลทั้งหมด</h2>${wppTable(['ภาคเรียน','ห้อง','เลขที่','ชื่อ–นามสกุล',...r.statuses,'รายการ','มา+สาย %'],wppStudentRows(r.byStudent))}</div>`;
  target.innerHTML+=`<div class="print-signature"><p>ลงชื่อ ....................................................ผู้จัดทำ</p><p>(${escapeHtml(name||'....................................................')})</p></div><div class="print-foot"><span>WPP Student Attendance</span><span>พิมพ์เมื่อ ${new Date().toLocaleString('th-TH')}</span></div>`;
- window.print();
+ wppPolishPrint(target);window.print();
 }
 // Small, dependency-free OOXML workbook writer. All text cells are literal strings.
 function wppXml(value){return String(value??'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));}
@@ -581,8 +596,8 @@ const NR = (() => {
   if(k==='room')result.push({name:'ยังไม่มีรายการ',title:'นักเรียนในทะเบียนที่ยังไม่มีรายการเช็คชื่อ',subtitle:sub,filter:true,widths:[8,36,12],rows:[['เลขที่','ชื่อ–นามสกุล','ห้อง'],...(r.studentsWithoutRecords||[]).map(x=>[Number(x.no)||x.no,x.name,x.room])]});return result;
  }
  function excel(k){const r=ready(k);if(!r)return;try{const url=URL.createObjectURL(wppWorkbook(sheets(k,r))),a=document.createElement('a');a.href=url;a.download=`WPP_${k}_${r.filters.start}_${r.filters.end}.xlsx`;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url);},1000);}catch(e){message(k,'ส่งออก Excel ไม่สำเร็จ: '+e.message);}}
- function print(k){const r=ready(k);if(!r)return;let target=document.getElementById('statsPrint');if(!target){target=document.createElement('div');target.id='statsPrint';document.body.appendChild(target);}target.innerHTML=`<div class="print-head"><img src="logo.png" alt="" onerror="this.remove()"><div><p class="print-school">โรงเรียนวังโพรงพิทยาคม · สพม.พิษณุโลก อุตรดิตถ์</p><h1>${esc(reportTitle(k))}</h1></div></div><div class="print-meta"><p>${esc(caption(k,r))}</p><p>สร้างเมื่อ ${esc(r.generatedAt)} (${esc(r.timezone)})</p></div><div class="stats-metrics">${metrics(k,r)}</div><p>${esc(el(k,'insight').textContent)}</p><div class="panel print-chart"><h2>สัดส่วนสถานะ</h2>${wppStatusBars(r)}</div><div class="panel print-chart"><h2>แนวโน้มมาและสาย</h2>${trend(k,r)}</div>`;
-  sheets(k,r).filter(x=>!['ข้อมูลรายงาน','สรุปสถานะ','แนวโน้มรายวัน'].includes(x.name)).forEach(sheet=>{target.innerHTML+=`<h2>${esc(sheet.title||sheet.name)}</h2>${wppTable(sheet.rows[0],sheet.rows.slice(1).map(row=>row.map(v=>typeof v==='string'?wppThaiDateText(v):v)))}`;});target.innerHTML+=`<div class="stats-notice">${wppQualityHTML(r)}</div><p>${esc(note)}</p><p>${esc(identityNote)}</p><div class="print-signature"><p>ลงชื่อ ............................................ผู้จัดทำ</p><p>(${esc(el(k,'author').value.trim()||'............................................')})</p></div><div class="print-foot"><span>WPP Student Attendance</span><span>พิมพ์เมื่อ ${new Date().toLocaleString('th-TH')}</span></div>`;window.print();}
+ function print(k){const r=ready(k);if(!r)return;let target=document.getElementById('statsPrint');if(!target){target=document.createElement('div');target.id='statsPrint';document.body.appendChild(target);}target.innerHTML=`<div class="print-head"><img class="print-logo" src="logo.png" alt="" onerror="this.style.visibility='hidden'"><div class="print-titles"><p class="print-school">โรงเรียนวังโพรงพิทยาคม</p><p class="print-office">สำนักงานเขตพื้นที่การศึกษามัธยมศึกษาพิษณุโลก อุตรดิตถ์</p><h1>${esc(reportTitle(k))}</h1></div><span class="print-spacer"></span></div><div class="print-meta"><p>${esc(caption(k,r))}</p><p>สร้างเมื่อ ${esc(r.generatedAt)} (${esc(r.timezone)})</p></div><div class="stats-metrics">${metrics(k,r)}</div><p>${esc(el(k,'insight').textContent)}</p><div class="panel print-chart"><h2>สัดส่วนสถานะ</h2>${wppStatusBars(r)}</div><div class="panel print-chart"><h2>แนวโน้มมาและสาย</h2>${trend(k,r)}</div>`;
+  sheets(k,r).filter(x=>!['ข้อมูลรายงาน','สรุปสถานะ','แนวโน้มรายวัน'].includes(x.name)).forEach(sheet=>{target.innerHTML+=`<h2>${esc(sheet.title||sheet.name)}</h2>${wppTable(sheet.rows[0],sheet.rows.slice(1).map(row=>row.map(v=>typeof v==='string'?wppThaiDateText(v):v)))}`;});target.innerHTML+=`<div class="stats-notice">${wppQualityHTML(r)}</div><p>${esc(note)}</p><p>${esc(identityNote)}</p><div class="print-signature"><p>ลงชื่อ ............................................ผู้จัดทำ</p><p>(${esc(el(k,'author').value.trim()||'............................................')})</p></div><div class="print-foot"><span>WPP Student Attendance</span><span>พิมพ์เมื่อ ${new Date().toLocaleString('th-TH')}</span></div>`;wppPolishPrint(target);window.print();}
  const previousShow=showPage;showPage=function(id){previousShow(id);const k=Object.keys(pages).find(k=>pages[k]===id);if(k&&!states[k].ready&&!states[k].optionsBusy)options(k);};
  document.addEventListener('click',e=>{const b=e.target.closest('[data-native-kind]');if(b)open(b.dataset.nativeKind,+b.dataset.nativeIndex);});
  return {states,options,dirty,people,personOptions,load,table,excel,print,trendRows,sheets,refreshTrend(k){if(states[k].report)el(k,'trend').innerHTML=trend(k,states[k].report);}};
