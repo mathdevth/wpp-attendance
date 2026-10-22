@@ -256,8 +256,8 @@ var Teach = (function () {
     st.logged = {}; st.warnDismissed = false;
     if (!st.room) { renderChips(); $('tBody').innerHTML = '<div class="card muted">เลือกห้องเรียนก่อน</div>'; setBar(''); return; }
     loading(true);
-    Promise.all([classLogsByDate(st.date), getStudents(st.room), getTimetable(st.room)]).then(function (v) {
-      v[0].filter(function (l) { return l.room === st.room; }).forEach(function (l) { st.logged[l.period] = l; });
+    Promise.all([db.collection('p_class').where('date', '==', st.date).where('room', '==', st.room).get().then(function (q) { var a = []; q.forEach(function (d) { a.push(d.data()); }); return a; }), getStudents(st.room), getTimetable(st.room)]).then(function (v) {
+      v[0].forEach(function (l) { st.logged[l.period] = l; });
       st.students = v[1]; st.tt = v[2]; loading(false); renderChips(); renderBody();
     }).catch(fail);
   }
