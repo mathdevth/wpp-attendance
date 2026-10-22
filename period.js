@@ -706,7 +706,7 @@ var Admin = (function () {
     getRooms().then(function (rs) {
       $('aBody').innerHTML = '<div class="card"><h2>นักเรียน · เลขประจำตัว · สถานะ</h2><div class="row"><div style="flex:1;min-width:150px"><label for="asRoom">ห้อง</label><select id="asRoom">' + rs.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('') + '</select></div><button class="btn" style="margin-top:20px" id="asSync">↻ ดึงรายชื่อล่าสุดจากระบบเช็คเข้าแถว</button></div>' +
         '<p class="muted">รายชื่อมาจากระบบเช็คเข้าแถวอัตโนมัติ · สถานะ ขาดเรียนนาน / พักการเรียน / ลาออก / ไม่มีตัวตน จะถูกล็อกในการเช็คชื่อทุกคาบจนกว่าจะเปลี่ยนกลับเป็นปกติ</p><div id="asList"></div></div>' +
-        '<div class="card"><h2>นำเข้าจาก Excel</h2><p class="muted">คัดลอกจาก Excel มาวาง: <b>เลขที่ | เลขประจำตัว | ชื่อ–นามสกุล | สถานะ(ไม่บังคับ)</b> · จับคู่ด้วยเลขที่ในห้องที่เลือก ถ้าไม่พบจะเพิ่มเป็นนักเรียนใหม่ในส่วนนี้</p><textarea id="asPaste" style="min-height:140px" placeholder="1&#9;12345&#9;เด็กชายตัวอย่าง ใจดี"></textarea><button class="btn pri" style="width:100%;margin-top:10px" id="asImport">นำเข้า</button></div>';
+        '<div class="card"><h2>นำเข้าจาก Excel</h2><p class="muted">คัดลอกจาก Excel มาวางได้ 3 แบบ<br>① <b>เลขประจำตัวคอลัมน์เดียว</b> เรียงตามเลขที่ 1, 2, 3… (ง่ายสุด)<br>② <b>เลขที่ | เลขประจำตัว</b><br>③ <b>เลขที่ | เลขประจำตัว | ชื่อ–นามสกุล | สถานะ</b> (ถ้าเลขที่ไม่มีในห้อง จะเพิ่มเป็นนักเรียนใหม่)</p><textarea id="asPaste" style="min-height:140px" placeholder="12345&#10;12346&#10;12347"></textarea><button class="btn pri" style="width:100%;margin-top:10px" id="asImport">นำเข้า</button></div>';
       $('asRoom').onchange = draw;
       $('asSync').onclick = function () { loading(true); syncStudents(true).then(function () { cache = {rooms: cache.rooms}; loading(false); toast('ดึงรายชื่อล่าสุดแล้ว ✓'); draw(); }).catch(fail); };
       $('asImport').onclick = importPaste;
@@ -729,15 +729,24 @@ var Admin = (function () {
     loading(true);
     db.doc('p_students/' + roomId(room)).set({room: room, students: list.slice().sort(byNo), syncedAt: FV.serverTimestamp()}).then(function () { delete cache['stu_' + room]; loading(false); toast('บันทึกแล้ว ✓'); draw(); }).catch(fail);
   }
+  // วางได้ 3 แบบ: (1) เลขประจำตัวคอลัมน์เดียว เรียงตามเลขที่ (2) เลขที่ | เลขประจำตัว (3) เลขที่ | เลขประจำตัว | ชื่อ | สถานะ
   function importPaste() {
-    var room = $('asRoom').value, list = asList.map(function (s) { return Object.assign({}, s); }), n = 0, added = 0;
-    $('asPaste').value.split('\n').forEach(function (line) {
-      var c = line.split('\t').map(function (x) { return x.trim(); }); if (c.length < 3 || !c[2]) return;
-      var stt = STUDENT_STATUS.indexOf(c[3]) >= 0 ? c[3] : null, s = list.find(function (x) { return String(x.no) === c[0]; });
-      if (s) { s.sid = c[1]; if (stt) s.status = stt; n++; } else { list.push({no: c[0], name: c[2], sid: c[1], status: stt || 'ปกติ', extra: true}); added++; }
-    });
-    if (!n && !added) return toast('ไม่พบข้อมูลที่อ่านได้ (ต้องคั่นด้วย Tab จาก Excel)', 'err');
-    asList = list; saveList(room, list); toast('อัปเดต ' + n + ' คน · เพิ่มใหม่ ' + added + ' คน');
+    var room = $('asRoom').value, list = asList.map(function (s) { return Object.assign({}, s); }).sort(byNo), n = 0, added = 0;
+    var lines = $('asPaste').value.split(/\r?\n/).map(function (l) { return l.split(/\t|\s*,\s*/).map(function (x) { return x.trim(); }).filter(Boolean); }).filter(function (c) { return c.length; });
+    if (!lines.length) return toast('ยังไม่ได้วางข้อมูล', 'err');
+    if (lines.every(function (c) { return c.length === 1; })) {
+      if (lines.length !== list.length && !confirm('วางเลขประจำตัว ' + lines.length + ' รายการ แต่ห้องนี้มี ' + list.length + ' คน\nระบบจะใส่ให้ตามลำดับเลขที่ ' + Math.min(lines.length, list.length) + ' คนแรก ดำเนินการต่อ?')) return;
+      lines.slice(0, list.length).forEach(function (c, i) { list[i].sid = c[0]; n++; });
+    } else {
+      lines.forEach(function (c) {
+        var no = c[0], sid = c[1] || '', name = c[2] || '', stt = STUDENT_STATUS.indexOf(c[3]) >= 0 ? c[3] : null;
+        var s = list.find(function (x) { return String(x.no) === String(no); });
+        if (s) { s.sid = sid; if (stt) s.status = stt; n++; }
+        else if (name) { list.push({no: no, name: name, sid: sid, status: stt || 'ปกติ', extra: true}); added++; }
+      });
+    }
+    if (!n && !added) return toast('ไม่พบเลขที่ที่ตรงกับรายชื่อในห้องนี้', 'err');
+    asList = list; saveList(room, list); toast('ใส่เลขประจำตัว ' + n + ' คน' + (added ? ' · เพิ่มใหม่ ' + added + ' คน' : ''));
   }
   // ---- ตารางเรียน ----
   function timetable() {
