@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>บันทึกเวลาเรียน · WPP</title>
+<meta name="theme-color" content="#2e86c1">
+<link rel="icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&amp;family=Sarabun:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+:root{--ink:#243553;--muted:#6f7f97;--blue:#2e86c1;--blue2:#1f4e79;--pink:#d64d8c;--line:#e3eaf4;--soft:#f4f8fd;--ok:#1f9d6b;--bad:#d94164;--warn:#d98a07;--r:16px}
+*{box-sizing:border-box}
+html,body{margin:0;background:#f3f7fc;color:var(--ink);font-family:'Sarabun',sans-serif;font-size:15px;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3,.tab,.btn,label,th{font-family:'Prompt','Sarabun',sans-serif}
+[hidden]{display:none!important}
+.top{position:sticky;top:0;z-index:20;background:#fffffff2;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1100px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px}
+.top img{width:38px;height:38px;object-fit:contain}
+.top h1{font-size:16px;margin:0;line-height:1.25}
+.top small{display:block;color:var(--muted);font-size:11.5px;font-family:'Sarabun';font-weight:400}
+.top .who{margin-left:auto;text-align:right;font-size:12px;color:var(--muted);line-height:1.3}
+.top .who a,.top .who button{background:none;border:0;color:var(--blue);padding:0;cursor:pointer;font-size:12px;text-decoration:underline}
+@media(max-width:480px){.top small{display:none}.top h1{font-size:15px}.top .who{font-size:11px}}
+.tabs{max-width:1100px;margin:0 auto;padding:0 12px 8px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font-size:13px;cursor:pointer;color:#4b5b74;white-space:nowrap}
+.tab.on{background:linear-gradient(110deg,#0ca7e4,#ec469e);color:#fff;border-color:transparent;box-shadow:0 4px 10px #e16dab22}
+main{max-width:1100px;margin:0 auto;padding:14px 16px 90px}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #2a5b9a0a}
+.card h2{font-size:16px;margin:0 0 10px;color:var(--blue2)}
+.card h3{font-size:14px;margin:14px 0 8px;color:var(--blue2)}
+.muted{color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label{display:block;font-size:12.5px;font-weight:500;color:#4f607a;margin:0 0 4px}
+input,select,textarea{width:100%;min-height:44px;border:1px solid #d5e1ef;border-radius:11px;background:#f9fbfe;padding:9px 11px;font-size:15px}
+textarea{min-height:70px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid #8cc6ee;border-color:#8cc6ee;background:#fff}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:10px 16px;border-radius:12px;border:1px solid #cfe0f1;background:#eef6fd;color:#225b8d;font-size:14px;font-weight:500;cursor:pointer}
+.btn.pri{background:linear-gradient(110deg,#0ca7e4,#ec469e);color:#fff;border:0}
+.btn.ok{background:var(--ok);color:#fff;border:0}
+.btn.danger{background:#fff0f3;color:var(--bad);border-color:#f6c9d5}
+.btn.sm{min-height:34px;padding:6px 11px;font-size:12.5px;border-radius:9px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid #d5e1ef;background:#fff;border-radius:10px;min-width:46px;min-height:42px;padding:6px 10px;font-size:13.5px;cursor:pointer;font-family:'Prompt'}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.chip.has{border-color:#9fd3b8;background:#effaf4}
+.chip.on.has{background:var(--ok);border-color:var(--ok)}
+.chip:disabled{opacity:.4}
+.note{border-radius:12px;padding:10px 12px;font-size:13.5px;margin:10px 0;line-height:1.55}
+.note.warn{background:#fff7e6;border:1px solid #f5d79a;color:#7a5200}
+.note.info{background:#eef6fd;border:1px solid #cfe3f5;color:#2a5680}
+.note.ok{background:#ecf9f2;border:1px solid #bfe7d1;color:#17694a}
+.note.err{background:#fff0f3;border:1px solid #f6c9d5;color:#a3213f}
+.stu{display:flex;align-items:center;gap:8px;padding:9px 4px;border-bottom:1px solid #eef2f8}
+.stu:last-child{border-bottom:0}
+.stu .no{width:28px;text-align:center;color:var(--muted);font-size:13px;flex:0 0 auto}
+.stu .nm{flex:1;min-width:0;font-size:14.5px;line-height:1.3}
+.stu .nm small{display:block;color:var(--muted);font-size:11.5px}
+.stu select{width:auto;min-width:112px;min-height:38px;padding:5px 8px;font-size:14px;border-radius:9px}
+.st-มา{background:#ecf9f2!important;border-color:#bfe7d1!important;color:#17694a}
+.st-สาย{background:#fff7e6!important;border-color:#f5d79a!important;color:#7a5200}
+.st-ขาด,.st-โดด{background:#fff0f3!important;border-color:#f3b4c4!important;color:#a3213f}
+.st-ลาป่วย,.st-ลากิจ{background:#eef3ff!important;border-color:#c9d6f5!important;color:#2e4d99}
+.st-กิจกรรม{background:#f4effd!important;border-color:#d8c9f3!important;color:#5b3a99}
+.st-lock{background:#f1f3f6!important;color:#69758a}
+.sum{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.sum span{font-size:12.5px;padding:4px 9px;border-radius:999px;background:var(--soft);border:1px solid var(--line)}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:15;background:#fffffff5;border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
+.bar .in{max-width:1100px;margin:0 auto;display:flex;gap:8px;align-items:center}
+.bar .in .btn{flex:1}
+.tbl-wrap{overflow:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:12px;max-height:70vh}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{position:sticky;top:0;background:var(--blue);color:#fff;font-weight:500;font-size:12px;padding:8px 6px;white-space:nowrap;z-index:1}
+td{padding:7px 6px;border-bottom:1px solid #eef2f8;text-align:center;white-space:nowrap}
+td.l{text-align:left}
+td.wrap{white-space:normal;min-width:160px;text-align:left}
+tbody tr:nth-child(even) td{background:#f8fbfe}
+.ck{display:inline-flex;width:30px;height:30px;border-radius:9px;align-items:center;justify-content:center;font-weight:700;cursor:pointer;border:0}
+.ck.y{background:#ddf5e8;color:var(--ok)}
+.ck.n{background:#ffe3ea;color:var(--bad)}
+.ck.z{background:#f1f3f6;color:#a0aabb;cursor:default}
+.ck small{font-size:10px;font-weight:600;margin-left:1px}
+.pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600}
+.e-ok{background:#ddf5e8;color:#17694a}.e-risk{background:#fff1cc;color:#7a5200}.e-call{background:#ffe2c7;color:#8a4300}.e-out{background:#ffdbe3;color:#a3213f}
+.modal{position:fixed;inset:0;z-index:50;background:#1e2a4066;display:flex;align-items:flex-end;justify-content:center}
+.modal .box{background:#fff;width:100%;max-width:640px;max-height:86vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+@media(min-width:700px){.modal{align-items:center}.modal .box{border-radius:20px}}
+.login{max-width:420px;margin:40px auto}
+.login .card{padding:22px}
+.seg{display:flex;background:var(--soft);border-radius:12px;padding:4px;gap:4px;margin-bottom:14px}
+.seg button{flex:1;border:0;background:none;border-radius:9px;min-height:40px;cursor:pointer;font-family:'Prompt';font-size:13.5px;color:#4b5b74}
+.seg button.on{background:#fff;box-shadow:0 1px 4px #0001;color:var(--blue2);font-weight:600}
+.gbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;min-height:46px;border:1px solid #dfe6f1;border-radius:11px;background:#fff;font-weight:600;cursor:pointer;font-family:'Prompt'}
+.loading{position:fixed;inset:0;z-index:60;background:#ffffffb0;display:flex;align-items:center;justify-content:center;font-family:'Prompt';color:var(--blue2)}
+.tt td input{min-height:34px;padding:4px 6px;font-size:13px;min-width:78px;border-radius:8px}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:10px 0}
+.kpi div{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:10px}
+.kpi b{display:block;font-size:22px;font-family:'Prompt';color:var(--blue2)}
+.kpi span{font-size:12px;color:var(--muted)}
+#printArea{display:none}
+@media print{
+ @page{size:A4 landscape;margin:11mm}
+ html,body{background:#fff!important}
+ #printArea .tbl-wrap{max-height:none;overflow:visible;border:0}
+ .top,.tabs,main,.bar,.modal{display:none!important}
+ #printArea{display:block!important;font-size:9.5pt}
+ #printArea .ph{display:grid;grid-template-columns:56px 1fr 56px;align-items:center;gap:10px;border-bottom:2.5px solid var(--blue);padding-bottom:8px;margin-bottom:10px}
+ #printArea .ph img{width:56px;height:56px;object-fit:contain}
+ #printArea .ph div{text-align:center}
+ #printArea .ph p{margin:0;color:#c2185b;font-weight:700;font-family:'Prompt';font-size:12pt}
+ #printArea .ph small{color:#6b7a90;font-size:8pt}
+ #printArea h1{margin:4px 0 0;font-size:16pt;color:var(--blue2);font-family:'Prompt'}
+ #printArea .pm{text-align:center;background:#f2f8fd;border:1px solid #d6e6f5;border-radius:8px;padding:6px;margin-bottom:10px}
+ #printArea table{font-size:8pt}
+ #printArea th{position:static;background:var(--blue)!important;color:#fff!important;border:1px solid #2a77ab;-webkit-print-color-adjust:exact;print-color-adjust:exact;white-space:normal}
+ #printArea td{border:1px solid #d3e0ee;white-space:nowrap}
+ #printArea td.wrap{white-space:normal}
+ #printArea thead{display:table-header-group}
+ #printArea tr{page-break-inside:avoid}
+ #printArea .pill{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ #printArea .sig{text-align:right;margin-top:26px;line-height:2}
+}
+</style>
+</head>
+<body>
+<header class="top" id="top" hidden>
+ <div class="top-in">
+  <img src="logo.png" alt="" onerror="this.style.visibility='hidden'">
+  <div><h1>บันทึกเวลาเรียน</h1><small>WPP Student Attendance · โรงเรียนวังโพรงพิทยาคม</small></div>
+  <div class="who"><span id="whoName"></span><br><a href="./">🏠 หน้าหลัก</a> · <button id="logoutBtn" type="button">ออกจากระบบ</button></div>
+ </div>
+ <nav class="tabs" id="tabs"></nav>
+</header>
+
+<section class="login" id="loginView" hidden>
+ <div class="card">
+  <div style="text-align:center"><img src="logo.png" alt="" style="width:64px;height:64px;object-fit:contain" onerror="this.remove()"><h2 style="margin:8px 0 2px;font-size:19px">บันทึกเวลาเรียน</h2><p class="muted" style="margin:0 0 14px">โรงเรียนวังโพรงพิทยาคม</p></div>
+  <div class="seg"><button type="button" id="segTeacher" class="on">👩‍🏫 ครู / ผู้ดูแล</button><button type="button" id="segLeader">🧑‍🎓 หัวหน้าห้อง</button></div>
+  <div id="teacherLogin">
+   <button type="button" class="gbtn" id="gLogin"><svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>เข้าสู่ระบบด้วย Google</button>
+   <p class="muted" style="text-align:center;margin:12px 0 8px">หรือใช้อีเมลและรหัสผ่านเดียวกับระบบเช็คเข้าแถว</p>
+   <form id="tForm"><label for="tEmail">อีเมล</label><input id="tEmail" type="email" autocomplete="username" required><label for="tPw" style="margin-top:10px">รหัสผ่าน</label><input id="tPw" type="password" autocomplete="current-password" required><button class="btn pri" style="width:100%;margin-top:14px" type="submit">เข้าสู่ระบบ</button></form>
+  </div>
+  <form id="leaderLogin" hidden>
+   <label for="lSid">เลขประจำตัวนักเรียน</label><input id="lSid" inputmode="numeric" autocomplete="username" required>
+   <label for="lPin" style="margin-top:10px">PIN 6 หลัก (รับจากครู)</label><input id="lPin" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" required>
+   <button class="btn pri" style="width:100%;margin-top:14px" type="submit">เข้าสู่ระบบหัวหน้าห้อง</button>
+  </form>
+  <div id="loginMsg" class="note" hidden></div>
+ </div>
+</section>
+
+<main id="app" hidden>
+ <section id="v-teach" data-view></section>
+ <section id="v-leader" data-view></section>
+ <section id="v-duty" data-view></section>
+ <section id="v-stats" data-view></section>
+ <section id="v-admin" data-view></section>
+</main>
+<div class="bar" id="bar" hidden><div class="in" id="barIn"></div></div>
+<div class="modal" id="modal" hidden><div class="box" id="modalBox"></div></div>
+<div class="loading" id="loading" hidden>กำลังโหลด…</div>
+<div id="printArea"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script src="period.js"></script>
+</body>
+</html>
