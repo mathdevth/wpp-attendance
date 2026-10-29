@@ -51,6 +51,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid #8cc6ee;border-color:#
 .chip.has{border-color:#9fd3b8;background:#effaf4}
 .chip.on.has{background:var(--ok);border-color:var(--ok)}
 .chip:disabled{opacity:.4}
+.chip.has.pend{border-color:#f0c36a;background:#fff7e6}.chip.on.has.pend{background:#d98a07;border-color:#d98a07;color:#fff}
+.ck.pend{background:#fff3dd!important;color:#a06400!important}
 .note{border-radius:12px;padding:10px 12px;font-size:13.5px;margin:10px 0;line-height:1.55}
 .note.warn{background:#fff7e6;border:1px solid #f5d79a;color:#7a5200}
 .note.info{background:#eef6fd;border:1px solid #cfe3f5;color:#2a5680}
@@ -153,6 +155,7 @@ tbody tr:nth-child(even) td{background:#f8fbfe}
   </form>
   <div id="loginMsg" class="note" hidden></div>
  </div>
+ <p class="muted" style="text-align:center;font-size:12px;line-height:1.6">พัฒนาโดย นายอชิตพล บุณรัตน์<br>💡 ไอเดียระบบบันทึกเวลาเรียน: นายกิตติศักดิ์ รัตนชัย</p>
 </section>
 
 <main id="app" hidden>
@@ -161,6 +164,7 @@ tbody tr:nth-child(even) td{background:#f8fbfe}
  <section id="v-duty" data-view></section>
  <section id="v-stats" data-view></section>
  <section id="v-admin" data-view></section>
+ <p class="muted" style="text-align:center;font-size:12px;margin-top:20px">💡 ไอเดียระบบบันทึกเวลาเรียน: นายกิตติศักดิ์ รัตนชัย · พัฒนาโดย นายอชิตพล บุณรัตน์</p>
 </main>
 <div class="bar" id="bar" hidden><div class="in" id="barIn"></div></div>
 <div class="modal" id="modal" hidden><div class="box" id="modalBox"></div></div>

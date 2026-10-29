@@ -1,4 +1,5 @@
 /* WPP — เล่มบันทึกกิจกรรมโฮมรูม (ส่งออก Word / PDF, ฟอนต์ TH Sarabun New)
+ * ต้นแบบเล่ม: นางสาวนลินี กาศแสวง
  * ใช้คู่กับ area.js (ต้องโหลดหลัง area.js)
  * ข้อมูล: p_area.hr (หัวหน้าห้องติ๊กหัวข้อ + รูป) · การเข้าเรียน: p_class คาบ HR → ถ้าไม่มีใช้ p_daily.morning
  */
@@ -58,7 +59,7 @@ var Book = {
       var mine = Staff.rooms.filter(function (r) { return (A[roomId(r)] || []).indexOf(me.email) >= 0; });
       var list = me.role === 'admin' ? Staff.rooms : (mine.length ? mine : Staff.rooms);
       var others = list.filter(function (r) { return mine.indexOf(r) < 0; });
-      box.innerHTML = '<div class="card"><h2>📘 เล่มบันทึกกิจกรรมโฮมรูม</h2><div class="muted">สร้างเล่มจากข้อมูลที่หัวหน้าห้องบันทึก + ผลเช็คชื่อคาบโฮมรูม ส่งออกเป็น Word หรือ PDF (TH Sarabun New)</div>' +
+      box.innerHTML = '<div class="card"><h2>📘 เล่มบันทึกกิจกรรมโฮมรูม</h2><div class="muted">สร้างเล่มจากข้อมูลที่หัวหน้าห้องบันทึก + ผลเช็คชื่อคาบโฮมรูม ส่งออกเป็น Word หรือ PDF (TH Sarabun New)<br>📄 ต้นแบบเล่มบันทึกโฮมรูม: นางสาวนลินี กาศแสวง</div>' +
         '<div class="row" style="margin-top:10px"><div style="flex:1;min-width:140px"><label for="bRoom">ห้อง</label><select id="bRoom">' +
         (mine.length ? '<optgroup label="ห้องที่ปรึกษาของฉัน">' + mine.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('') + '</optgroup>' : '') +
         (others.length ? '<optgroup label="ห้องอื่น">' + others.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('') + '</optgroup>' : '') + '</select></div>' +

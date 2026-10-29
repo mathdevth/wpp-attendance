@@ -13,7 +13,9 @@
  *   p_leaders/{authEmail} {sid,name,room,roomId}
  *   p_leaderLogin/{sid}   {email}                        ใช้แปลงเลขประจำตัว → บัญชีหัวหน้าห้อง
  *   p_daily/{date}_{roomId}            {date,room,roomId,term,morning:{key:status},home:{key:status},note,...}
- *   p_class/{date}_{roomId}_{period}   {date,term,room,roomId,period,periods,code,subject,coTeacher,topic,work,records,note,teacher,teacherName}
+ *   p_class/{date}_{roomId}_{period}   {date,term,room,roomId,period,periods,code,subject,coTeacher,topic,work,records,note,teacher,teacherName,
+ *                                        by:'leader'|'teacher', confirmed, leaderName, leaderSid, confirmedAt}
+ *     หัวหน้าห้องบันทึกแทนได้ (confirmed:false) → ครูประจำวิชากดยืนยัน (ไอเดีย: นายกิตติศักดิ์ รัตนชัย)
  */
 'use strict';
 
@@ -203,7 +205,8 @@ var VIEWS = [
   {id: 'duty', label: '🛡️ ครูเวรประจำวัน', who: 'staff'},
   {id: 'stats', label: '📊 สถิติ / รายงาน', who: 'staff'},
   {id: 'admin', label: '⚙️ ผู้ดูแลระบบ', who: 'admin'},
-  {id: 'leader', label: '🧑‍🎓 เช็คชื่อประจำวัน', who: 'leader'}
+  {id: 'leader', label: '🧑‍🎓 เช็คชื่อประจำวัน', who: 'leader'},
+  {id: 'teachL', label: '📝 บันทึกเวลาเรียนรายคาบ', who: 'leader'}
 ];
 var current = null;
 function startApp() {
@@ -217,10 +220,10 @@ function startApp() {
 }
 function show(id) {
   current = id; try { sessionStorage.setItem('p_view', id); } catch (e) {}
-  document.querySelectorAll('[data-view]').forEach(function (s) { s.hidden = s.id !== 'v-' + id; });
+  document.querySelectorAll('[data-view]').forEach(function (s) { s.hidden = s.id !== 'v-' + (id === 'teachL' ? 'teach' : id); });
   $('tabs').querySelectorAll('.tab').forEach(function (b) { b.classList.toggle('on', b.dataset.v === id); });
   $('bar').hidden = true;
-  ({teach: Teach, duty: Duty, stats: Stats, admin: Admin, leader: Leader})[id].init();
+  ({teach: Teach, teachL: Teach, duty: Duty, stats: Stats, admin: Admin, leader: Leader})[id].init();
   window.scrollTo(0, 0);
 }
 function setBar(html) { $('barIn').innerHTML = html; $('bar').hidden = !html; }
@@ -247,17 +250,21 @@ function countLine(records, list) {
 var Teach = (function () {
   // mode: 'room' = สอนทั้งห้อง · 'group' = วิชาเลือก/กลุ่มเรียน (นักเรียนต่างห้อง)
   var st = {date: today(), mode: 'room', room: '', gid: '', sel: [], students: [], logged: {}, warnDismissed: false};
+  var L = function () { return me.role === 'leader'; };
   function init() {
-    Promise.all([getRooms(), getGroups().catch(function () { return []; })]).then(function (v) {
+    if (L()) { st.mode = 'room'; st.room = me.room; }
+    Promise.all([L() ? [me.room] : getRooms(), L() ? [] : getGroups().catch(function () { return []; }), L() ? null : pending()]).then(function (v) {
       var rooms = v[0], gs = v[1].slice().sort(function (a, b) { return ((b.teachers || []).indexOf(me.email) >= 0) - ((a.teachers || []).indexOf(me.email) >= 0) || cmpTh(a.name, b.name); });
       st.groups = gs;
       $('v-teach').innerHTML =
+        (L() ? '' : '<div id="tPend"></div>') +
         '<div class="card"><h2>📝 บันทึกการเข้าเรียนรายคาบ</h2>' +
+        (L() ? '<div class="note info">หัวหน้าห้องบันทึกแทนครูได้ · <b>ครูประจำวิชาจะตรวจและกดยืนยัน</b> รายการที่ครูยืนยันแล้วจะแก้ไม่ได้</div>' : '') +
         (gs.length ? '<div class="seg" id="tMode"><button type="button" data-m="room">🏫 สอนทั้งห้อง</button><button type="button" data-m="group">📚 วิชาเลือก / กลุ่มเรียน</button></div>' : '') +
         '<div class="grid">' +
         '<div><label for="tDate">วันที่</label><input type="date" id="tDate" value="' + st.date + '"></div>' +
         '<div><label for="tTerm">ภาคเรียน/ปีการศึกษา</label><input id="tTerm" value="' + termFor(st.date) + '"></div>' +
-        '<div id="tRoomBox"><label for="tRoom">ห้องที่สอน</label><select id="tRoom"><option value="">— เลือกห้อง —</option>' + rooms.map(function (r) { return '<option' + (r === st.room ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></div>' +
+        '<div id="tRoomBox"><label for="tRoom">ห้องที่สอน</label><select id="tRoom"' + (L() ? ' disabled' : '') + '><option value="">— เลือกห้อง —</option>' + rooms.map(function (r) { return '<option' + (r === st.room ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></div>' +
         '<div id="tGroupBox" hidden><label for="tGroup">กลุ่มเรียน</label><select id="tGroup"><option value="">— เลือกกลุ่ม —</option>' + gs.map(function (g) { var mine = (g.teachers || []).indexOf(me.email) >= 0; return '<option value="' + esc(g.id) + '"' + (g.id === st.gid ? ' selected' : '') + '>' + (mine ? '⭐ ' : '') + esc(g.name) + (g.code ? ' (' + esc(g.code) + ')' : '') + '</option>'; }).join('') + '</select></div></div>' +
         '<div id="tDay" class="muted" style="margin-top:8px"></div>' +
         '<label style="margin-top:12px">คาบเรียน <span class="muted">(เลือกได้สูงสุด 2 คาบที่ติดกัน · สีเขียว = บันทึกแล้ว)</span></label><div class="chips" id="tChips"></div></div>' +
@@ -266,8 +273,40 @@ var Teach = (function () {
       $('tRoom').onchange = function () { st.room = this.value; st.sel = []; refresh(); };
       $('tGroup').onchange = function () { st.gid = this.value; st.sel = []; refresh(); };
       if ($('tMode')) $('tMode').querySelectorAll('button').forEach(function (b) { b.onclick = function () { st.mode = b.dataset.m; st.sel = []; mode(); refresh(); }; });
-      mode(); refresh();
+      mode(); refresh(); if (!L()) drawPending(v[2]);
     }).catch(fail);
+  }
+  // ---- รายการที่หัวหน้าห้องบันทึกแทน รอครูยืนยัน ----
+  function pending() {
+    return Promise.all([db.collection('p_class').where('confirmed', '==', false).get(), db.doc('p_teacherInfo/' + me.email).get().catch(function () { return null; })]).then(function (v) {
+      var codes = v[1] && v[1].exists ? v[1].data().codes || [] : [], all = [], mine = [];
+      v[0].forEach(function (d) { var x = Object.assign({_id: d.id}, d.data()); all.push(x); if (codes.indexOf(x.code) >= 0) mine.push(x); });
+      var list = me.role === 'admin' && !codes.length ? all : mine;
+      return list.sort(function (a, b) { return b.date.localeCompare(a.date) || cmpTh(a.room, b.room) || PERIODS.indexOf(a.period) - PERIODS.indexOf(b.period); });
+    }).catch(function (e) { console.warn('pending', e); return []; });
+  }
+  function drawPending(list) {
+    st.pend = list || [];
+    var box = $('tPend'); if (!box) return;
+    if (!st.pend.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="card" style="border-color:#f5d79a;background:#fffdf5"><h2>📥 หัวหน้าห้องบันทึกแทน · รอครูยืนยัน <span class="muted" style="font-size:13px">(' + st.pend.length + ' คาบ)</span></h2>' +
+      '<div class="muted" style="margin-bottom:6px">วิชาที่ตรงกับรหัสวิชาของครู · ตรวจรายชื่อ/เนื้อหา แล้วกดยืนยัน หรือกด "ตรวจ/แก้" เพื่อเปิดแก้ไขก่อน</div>' +
+      st.pend.slice(0, 30).map(function (l, i) {
+        var ab = (l.records || []).filter(function (x) { return ABSENT.indexOf(x.status) >= 0; });
+        return '<div class="stu" style="flex-wrap:wrap"><span class="nm"><b>' + thDate(l.date) + ' · ' + esc(l.room) + ' · ' + pLabel(l.period) + '</b><small>' + esc(l.code) + ' ' + esc(l.subject || '') + ' · ' + esc(l.topic || '-') + ' · ขาด ' + ab.length + ' คน · โดย ' + esc(l.leaderName || 'หัวหน้าห้อง') + '</small></span>' +
+          '<button class="btn sm" onclick="Teach.openLog(' + i + ')">ตรวจ/แก้</button><button class="btn sm ok" onclick="Teach.confirm([' + i + '])">✓ ยืนยัน</button></div>';
+      }).join('') + (st.pend.length > 1 ? '<button class="btn ok" style="width:100%;margin-top:8px" onclick="Teach.confirmAll()">✓ ยืนยันทั้งหมด ' + Math.min(st.pend.length, 30) + ' คาบ</button>' : '') + '</div>';
+  }
+  function confirmLogs(idx) {
+    var batch = db.batch();
+    idx.forEach(function (i) { var l = st.pend[i]; batch.set(db.doc('p_class/' + l._id), {confirmed: true, teacher: me.email, teacherName: me.name, confirmedAt: FV.serverTimestamp()}, {merge: true}); });
+    loading(true, 'กำลังยืนยัน…');
+    batch.commit().then(function () { loading(false); toast('ยืนยันแล้ว ' + idx.length + ' คาบ ✓'); pending().then(drawPending); if (ready()) refresh(); }).catch(fail);
+  }
+  function openLog(i) {
+    var l = st.pend[i]; st.mode = 'room'; st.room = l.room; st.date = l.date; st.sel = [l.period];
+    $('tDate').value = l.date; $('tTerm').value = termFor(l.date); $('tRoom').value = l.room; mode();
+    var keep = st.sel.slice(); refresh(keep); window.scrollTo(0, $('tChips').offsetTop - 80);
   }
   function mode() {
     if ($('tMode')) $('tMode').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.m === st.mode); });
@@ -275,14 +314,14 @@ var Teach = (function () {
   }
   function group() { return (st.groups || []).find(function (g) { return g.id === st.gid; }); }
   function ready() { return st.mode === 'room' ? !!st.room : !!group(); }
-  function refresh() {
+  function refresh(keepSel) {
     var d = dow(st.date); $('tDay').textContent = 'วัน' + (DAYS[d] || (d === 0 ? 'อาทิตย์' : 'เสาร์')) + 'ที่ ' + thDate(st.date) + (DAYS[d] ? '' : ' · วันหยุด');
-    st.logged = {}; st.warnDismissed = false; st.tt = null;
+    st.logged = {}; st.warnDismissed = false; st.tt = null; if (keepSel) st.sel = keepSel;
     if (!ready()) { renderChips(); $('tBody').innerHTML = '<div class="card muted">' + (st.mode === 'room' ? 'เลือกห้องเรียนก่อน' : 'เลือกกลุ่มเรียนก่อน') + '</div>'; setBar(''); return; }
     loading(true);
     var docs = function (q) { return q.get().then(function (r) { var a = []; r.forEach(function (x) { a.push(x.data()); }); return a; }); };
     if (st.mode === 'room') {
-      Promise.all([docs(db.collection('p_class').where('date', '==', st.date).where('room', '==', st.room)), getStudents(st.room), getTimetable(st.room)]).then(function (v) {
+      Promise.all([docs(db.collection('p_class').where('date', '==', st.date).where('roomId', '==', roomId(st.room))), getStudents(st.room), getTimetable(st.room).catch(function () { return {}; })]).then(function (v) {
         v[0].forEach(function (l) { if (!l.group) st.logged[l.period] = l; });
         st.students = v[1]; st.tt = v[2]; loading(false); renderChips(); renderBody();
       }).catch(fail);
@@ -305,7 +344,7 @@ var Teach = (function () {
   function renderChips() {
     $('tChips').innerHTML = PERIODS.map(function (p) {
       var slot = slotOf(p);
-      return '<button type="button" class="chip' + (st.sel.indexOf(p) >= 0 ? ' on' : '') + (st.logged[p] ? ' has' : '') + '" data-p="' + p + '" title="' + esc(slot ? (slot.code || '') + ' ' + (slot.name || '') : '') + '"' + (slot && st.mode === 'group' && !st.logged[p] ? ' style="border-style:dashed;border-color:var(--blue)"' : '') + (ready() ? '' : ' disabled') + '>' + (p === 'HR' ? 'โฮมรูม' : p) + '</button>';
+      return '<button type="button" class="chip' + (st.sel.indexOf(p) >= 0 ? ' on' : '') + (st.logged[p] ? ' has' + (st.logged[p].confirmed === false ? ' pend' : '') : '') + '" data-p="' + p + '" title="' + esc(slot ? (slot.code || '') + ' ' + (slot.name || '') : '') + '"' + (slot && st.mode === 'group' && !st.logged[p] ? ' style="border-style:dashed;border-color:var(--blue)"' : '') + (ready() ? '' : ' disabled') + '>' + (p === 'HR' ? 'โฮมรูม' : p) + '</button>';
     }).join('');
     $('tChips').querySelectorAll('.chip').forEach(function (b) { b.onclick = function () { pick(b.dataset.p); }; });
   }
@@ -336,11 +375,14 @@ var Teach = (function () {
     var first = st.sel[0], log = st.logged[first], slot = slotOf(first) || {}, g = st.mode === 'group' ? group() : null;
     var code = log ? log.code : slot.code || (g ? g.code : '') || '', name = log ? log.subject : slot.name || (g ? g.subject || g.name : '') || '';
     loading(true);
-    Promise.all([defaults(log), getSubjects()]).then(function (v) {
+    Promise.all([defaults(log), getSubjects().catch(function () { return {}; })]).then(function (v) {
       loading(false);
       var map = v[0].map, src = v[0].src, subjects = v[1], title = st.mode === 'room' ? st.room : g.name;
       var warn = '';
-      if (src === 'saved') warn = '<div class="note ok">✓ บันทึก ' + st.sel.map(pLabel).join(', ') + ' แล้วโดย ' + esc(log.teacherName || log.teacher) + ' · แก้ไขแล้วบันทึกทับได้</div>';
+      var locked = L() && log && log.confirmed !== false;
+      if (src === 'saved' && log.confirmed === false) warn = '<div class="note warn">⏳ หัวหน้าห้อง (' + esc(log.leaderName || '') + ') บันทึกแทนแล้ว · <b>รอครูยืนยัน</b>' + (L() ? ' · แก้ไขได้จนกว่าครูจะยืนยัน' : ' · ตรวจแล้วกดบันทึก = ยืนยัน') + '</div>';
+      else if (locked) warn = '<div class="note ok">🔒 ' + esc(log.teacherName || 'ครูผู้สอน') + ' บันทึก/ยืนยันคาบนี้แล้ว หัวหน้าห้องแก้ไขไม่ได้</div>';
+      else if (src === 'saved') warn = '<div class="note ok">✓ บันทึก ' + st.sel.map(pLabel).join(', ') + ' แล้วโดย ' + esc(log.teacherName || log.teacher) + (log.leaderName ? ' (หัวหน้าห้อง ' + esc(log.leaderName) + ' บันทึกเบื้องต้น)' : '') + ' · แก้ไขแล้วบันทึกทับได้</div>';
       else if (src === 'leader') warn = '<div class="note info">ค่าเริ่มต้นจากการเช็คชื่อของหัวหน้าห้องวันนี้ ปรับสถานะคนที่โดดหรือสายในคาบนี้ได้</div>';
       else if (!st.warnDismissed) warn = '<div class="note warn" id="tWarn">⚠️ <b>หัวหน้าห้อง' + (st.mode === 'group' ? 'บางห้อง' : '') + 'ยังไม่ได้เช็คชื่อวันนี้</b> กรุณาแจ้งหัวหน้าห้อง<br>' + (src === 'lineup' || src === 'mixed' ? 'ระหว่างนี้ใช้ข้อมูลเข้าแถวเช้าเป็นค่าเริ่มต้น' : 'ระหว่างนี้ตั้งทุกคนเป็น "มา" ไว้ก่อน') + ' ครูปรับแก้และบันทึกเองได้เลย<div style="margin-top:8px"><button class="btn sm" type="button" onclick="Teach.dismiss()">รับทราบ ปิดแจ้งเตือน</button></div></div>';
       var w = log && log.work || {};
@@ -358,7 +400,10 @@ var Teach = (function () {
         '<label for="tNote" style="margin-top:12px">บันทึกเพิ่มเติม</label><textarea id="tNote" placeholder="พฤติกรรม ปัญหา ข้อเสนอแนะ">' + esc(log ? log.note || '' : '') + '</textarea></div>';
       $('tCode').oninput = function () { var n = subjects[this.value.trim()]; if (n) $('tSubj').value = n; };
       $('tWorkSeg').querySelectorAll('button').forEach(function (b) { b.onclick = function () { $('tWorkSeg').querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); }); $('tWork').hidden = b.dataset.w === 'ไม่มี'; }; });
-      window.tsChanged(); setBar('<button class="btn pri" id="tSave">💾 บันทึก ' + st.sel.map(pLabel).join(' + ') + '</button>'); $('tSave').onclick = save;
+      window.tsChanged();
+      if (locked) { setBar(''); $('tBody').querySelectorAll('input,select,textarea,button').forEach(function (x) { x.disabled = true; }); return; }
+      var lbl = L() ? '💾 ส่งให้ครูยืนยัน ' : log && log.confirmed === false ? '✓ ยืนยันและบันทึก ' : '💾 บันทึก ';
+      setBar('<button class="btn pri" id="tSave">' + lbl + st.sel.map(pLabel).join(' + ') + '</button>'); $('tSave').onclick = save;
     }).catch(fail);
   }
   window.tsChanged = function () { if ($('tCount') && st.students.length) $('tCount').innerHTML = countLine(readRows(st.students, 'ts'), ST_CLASS); };
@@ -370,6 +415,10 @@ var Teach = (function () {
     if (work && !work.detail) return toast('กรุณาระบุงาน/การบ้าน', 'err');
     var base = {date: st.date, term: $('tTerm').value.trim() || termFor(st.date), periods: st.sel.slice(), code: code, subject: $('tSubj').value.trim(),
       coTeacher: $('tCo').value.trim(), topic: topic, work: work, note: $('tNote').value.trim(), teacher: me.email, teacherName: me.name, updatedAt: FV.serverTimestamp()};
+    var prev = st.logged[st.sel[0]] || {};
+    if (L()) Object.assign(base, {teacher: '', teacherName: '', by: 'leader', confirmed: false, leaderName: me.name, leaderSid: me.sid});
+    else Object.assign(base, {by: 'teacher', confirmed: true, leaderName: prev.leaderName || null, leaderSid: prev.leaderSid || null});
+    if (L() && st.sel.some(function (p) { return st.logged[p] && st.logged[p].confirmed !== false; })) return toast('มีคาบที่ครูยืนยันแล้ว แก้ไขไม่ได้', 'err');
     var rows = readRows(st.students, 'ts'), batch = db.batch();
     if (st.mode === 'room') {
       st.sel.forEach(function (p) { batch.set(db.doc('p_class/' + st.date + '_' + roomId(st.room) + '_' + p), Object.assign({}, base, {room: st.room, roomId: roomId(st.room), records: rows, period: p})); });
@@ -382,9 +431,9 @@ var Teach = (function () {
       }); });
     }
     $('tSave').disabled = true; loading(true, 'กำลังบันทึก…');
-    batch.commit().then(function () { loading(false); toast('บันทึก ' + st.sel.map(pLabel).join(' + ') + ' เรียบร้อย ✓'); st.sel = []; refresh(); }).catch(function (e) { $('tSave').disabled = false; fail(e); });
+    batch.commit().then(function () { loading(false); toast(L() ? 'ส่งให้ครูยืนยันแล้ว ✓' : 'บันทึก ' + st.sel.map(pLabel).join(' + ') + ' เรียบร้อย ✓'); st.sel = []; refresh(); if (!L()) pending().then(drawPending); }).catch(function (e) { $('tSave').disabled = false; fail(e); });
   }
-  return {init: init, dismiss: function () { st.warnDismissed = true; var w = $('tWarn'); if (w) w.remove(); }};
+  return {init: init, openLog: openLog, confirm: confirmLogs, confirmAll: function () { confirmLogs(st.pend.slice(0, 30).map(function (x, i) { return i; })); }, dismiss: function () { st.warnDismissed = true; var w = $('tWarn'); if (w) w.remove(); }};
 })();
 
 // =====================================================================
@@ -481,7 +530,7 @@ var Duty = (function () {
               if (ok === n) { done++; return '<td><button class="ck y" title="วิชาเลือก ' + n + ' กลุ่ม" onclick="Duty.detail(' + ri + ',\'' + p + '\')">✓' + (ab ? '<small>' + ab + '</small>' : '') + '</button></td>'; }
               missing += n - ok; return '<td><button class="ck n" title="บันทึกแล้ว ' + ok + '/' + n + ' กลุ่ม" onclick="Duty.detail(' + ri + ',\'' + p + '\')">' + (ok ? ok + '/' + n : '✗') + '</button></td>';
             }
-            if (l) { done++; var a = (l.records || []).filter(function (x) { return ABSENT.indexOf(x.status) >= 0; }).length; return '<td><button class="ck y" onclick="Duty.detail(' + ri + ',\'' + p + '\')">✓' + (a ? '<small>' + a + '</small>' : '') + '</button></td>'; }
+            if (l) { done++; var a = (l.records || []).filter(function (x) { return ABSENT.indexOf(x.status) >= 0; }).length; return '<td><button class="ck y' + (l.confirmed === false ? ' pend' : '') + '"' + (l.confirmed === false ? ' title="หัวหน้าห้องบันทึกแทน รอครูยืนยัน"' : '') + ' onclick="Duty.detail(' + ri + ',\'' + p + '\')">✓' + (a ? '<small>' + a + '</small>' : '') + '</button></td>'; }
             if (expected) { missing++; return '<td><button class="ck n" onclick="Duty.detail(' + ri + ',\'' + p + '\')">✗</button></td>'; }
             return '<td><span class="ck z">–</span></td>';
           });
@@ -655,7 +704,7 @@ var Stats = (function () {
       var head = ['วันที่', 'ชั้น/ห้อง', 'คาบ', 'รหัสวิชา', 'ผู้สอน', 'ผู้สอนร่วม/แทน', 'เลขที่ไม่เข้าเรียน', 'รวมไม่เข้าเรียน', 'เนื้อหาที่สอน', 'งาน/การบ้าน', 'บันทึก'];
       var rows = list.map(function (l) {
         var nb = (l.records || []).filter(function (r) { return r.status !== 'มา' && r.status !== 'สาย' && LOCK.indexOf(r.status) < 0; });
-        return [thDate(l.date), l.room + (l.groupName ? ' · ' + l.groupName : ''), pShort(l.period), l.code, l.teacherName || l.teacher, l.coTeacher || '-', nb.map(function (r) { return r.no; }).sort(function (a, b) { return a - b; }).join(', ') || '-', nb.length, l.topic, l.work ? l.work.type + ': ' + l.work.detail + (l.work.due ? ' (ส่ง ' + thDate(l.work.due) + ')' : '') : '-', l.note || '-'];
+        return [thDate(l.date), l.room + (l.groupName ? ' · ' + l.groupName : ''), pShort(l.period), l.code, l.confirmed === false ? '⏳ รอยืนยัน (หัวหน้าห้อง ' + (l.leaderName || '') + ')' : (l.teacherName || l.teacher) + (l.leaderName ? ' (หน.ห้องบันทึก)' : ''), l.coTeacher || '-', nb.map(function (r) { return r.no; }).sort(function (a, b) { return a - b; }).join(', ') || '-', nb.length, l.topic, l.work ? l.work.type + ': ' + l.work.detail + (l.work.due ? ' (ส่ง ' + thDate(l.work.due) + ')' : '') : '-', l.note || '-'];
       });
       setSheet('รายงานการเข้าสอน', head, rows, {left: [0, 4], wrap: [8, 9, 10]});
       $('tOut').innerHTML = '<p class="muted">' + list.length + ' คาบ</p>' + tableHTML(head, rows, {left: [0, 4], wrap: [8, 9, 10]}) + exportBar();
