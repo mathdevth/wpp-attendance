@@ -113,6 +113,7 @@ auth.onAuthStateChanged(function (u) {
     p = db.doc('p_leaders/' + email).get().then(function (s) {
       if (!s.exists) throw new Error('บัญชีหัวหน้าห้องนี้ถูกยกเลิกแล้ว กรุณาติดต่อครู');
       var d = s.data(); me = {email: email, name: d.name, sid: d.sid, room: d.room, roomId: d.roomId, role: 'leader'};
+      return db.doc('settings/term').get().then(function (t) { termCfg = t.exists ? t.data() : null; }).catch(function () {});
     });
   } else {
     if (!u.emailVerified) p = Promise.reject(new Error('กรุณายืนยันอีเมลในระบบเช็คเข้าแถวก่อน'));
