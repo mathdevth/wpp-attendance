@@ -250,7 +250,7 @@ function countLine(records, list) {
 // =====================================================================
 var Teach = (function () {
   // mode: 'room' = สอนทั้งห้อง · 'group' = วิชาเลือก/กลุ่มเรียน (นักเรียนต่างห้อง)
-  var st = {date: today(), mode: 'room', room: '', gid: '', sel: [], students: [], logged: {}, warnDismissed: false};
+  var st = {date: today(), mode: 'room', room: '', extra: [], gid: '', sel: [], students: [], logged: {}, warnDismissed: false}; // extra = ห้องที่เรียนรวม
   var L = function () { return me.role === 'leader'; };
   function init() {
     st.sel = []; if (L()) { st.mode = 'room'; st.room = me.room; }
@@ -268,13 +268,14 @@ var Teach = (function () {
         '<div class="grid">' +
         '<div><label for="tDate">วันที่</label><input type="date" id="tDate" value="' + st.date + '"></div>' +
         '<div><label for="tTerm">ภาคเรียน/ปีการศึกษา</label><input id="tTerm" value="' + termFor(st.date) + '"></div>' +
-        '<div id="tRoomBox"><label for="tRoom">ห้องที่สอน</label><select id="tRoom"' + (L() ? ' disabled' : '') + '><option value="">— เลือกห้อง —</option>' + rooms.map(function (r) { return '<option' + (r === st.room ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></div>' +
+        '<div id="tRoomBox"><label for="tRoom">ห้องที่สอน</label><select id="tRoom"' + (L() ? ' disabled' : '') + '><option value="">— เลือกห้อง —</option>' + rooms.map(function (r) { return '<option' + (r === st.room ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select>' + (L() ? '' : '<div id="tJoint" style="margin-top:6px"></div>') + '</div>' +
         '<div id="tGroupBox" hidden><label for="tGroup">กลุ่มเรียน</label><select id="tGroup"><option value="">— เลือกกลุ่ม —</option>' + gs.map(function (g) { var mine = (g.teachers || []).indexOf(me.email) >= 0; return '<option value="' + esc(g.id) + '"' + (g.id === st.gid ? ' selected' : '') + '>' + (mine ? '⭐ ' : '') + esc(g.name) + (g.code ? ' (' + esc(g.code) + ')' : '') + '</option>'; }).join('') + '</select></div></div>' +
         '<div id="tDay" class="muted" style="margin-top:8px"></div>' +
         '<label style="margin-top:12px">คาบเรียน <span class="muted">(เลือกได้สูงสุด 2 คาบที่ติดกัน · สีเขียว = บันทึกแล้ว)</span></label><div class="chips" id="tChips"></div></div>' +
         '<div id="tBody"></div>';
       $('tDate').onchange = function () { st.date = this.value || today(); $('tTerm').value = termFor(st.date); st.sel = []; refresh(); };
-      $('tRoom').onchange = function () { st.room = this.value; st.sel = []; refresh(); };
+      st.allRooms = rooms;
+      $('tRoom').onchange = function () { st.room = this.value; st.extra = []; st.sel = []; refresh(); };
       $('tGroup').onchange = function () { st.gid = this.value; st.sel = []; refresh(); };
       if ($('tMode')) $('tMode').querySelectorAll('button').forEach(function (b) { b.onclick = function () { st.mode = b.dataset.m; st.sel = []; mode(); refresh(); }; });
       mode(); refresh(); if (!L()) { drawPending(v[2]); if ($('tHelp')) $('tHelp').onchange = setHelp; }
@@ -335,9 +336,17 @@ var Teach = (function () {
     loading(true);
     var docs = function (q) { return q.get().then(function (r) { var a = []; r.forEach(function (x) { a.push(x.data()); }); return a; }); };
     if (st.mode === 'room') {
-      Promise.all([docs(db.collection('p_class').where('date', '==', st.date).where('roomId', '==', roomId(st.room))), getStudents(st.room), getTimetable(st.room).catch(function () { return {}; })]).then(function (v) {
-        v[0].forEach(function (l) { if (!l.group) st.logged[l.period] = l; });
-        st.students = v[1]; st.tt = v[2]; loading(false); renderChips(); renderBody();
+      drawJoint();
+      var rs = [st.room].concat(st.extra);
+      Promise.all([getTimetable(st.room).catch(function () { return {}; })].concat(rs.map(function (r) {
+        return Promise.all([docs(db.collection('p_class').where('date', '==', st.date).where('roomId', '==', roomId(r))), getStudents(r)]);
+      }))).then(function (v) {
+        st.tt = v[0];
+        v.slice(1).forEach(function (x, i) {
+          x[0].forEach(function (l) { if (l.group) return; var c = st.logged[l.period]; if (!c) st.logged[l.period] = Object.assign({}, l, {records: (l.records || []).slice()}); else c.records = c.records.concat(l.records || []); });
+        });
+        st.students = rs.length === 1 ? v[1][1] : [].concat.apply([], v.slice(1).map(function (x, i) { return x[1].map(function (s) { return Object.assign({}, s, {_room: rs[i]}); }); }));
+        loading(false); renderChips(); renderBody();
       }).catch(fail);
     } else {
       var g = group(), rooms = {}; (g.members || []).forEach(function (m) { rooms[m.room] = 1; });
@@ -371,8 +380,20 @@ var Teach = (function () {
     st.sel = s; renderChips(); renderBody();
   }
   // ค่าเริ่มต้นสถานะ: บันทึกเดิม → หัวหน้าห้อง → เข้าแถวเช้า → "มา" (ทำแยกรายห้อง สำหรับกลุ่มเรียน)
+  // ห้องที่เรียนรวม (ครูสอนพร้อมกันหลายห้อง) — กรอกรายละเอียดครั้งเดียว บันทึกแยกรายห้อง
+  function drawJoint() {
+    var box = $('tJoint'); if (!box) return;
+    if (!st.room) { box.innerHTML = ''; return; }
+    var others = (st.allRooms || []).filter(function (r) { return r !== st.room; });
+    box.innerHTML = '<details' + (st.extra.length ? ' open' : '') + '><summary class="muted" style="cursor:pointer;font-size:13px">➕ เรียนรวมกับห้องอื่น' + (st.extra.length ? ' · <b style="color:var(--blue2)">' + st.extra.map(esc).join(', ') + '</b>' : ' (สอนพร้อมกันหลายห้อง)') + '</summary><div class="chips" style="margin-top:6px">' +
+      others.map(function (r) { return '<button type="button" class="chip' + (st.extra.indexOf(r) >= 0 ? ' on' : '') + '" data-r="' + esc(r) + '">' + esc(r) + '</button>'; }).join('') + '</div></details>';
+    box.querySelectorAll('.chip').forEach(function (b) { b.onclick = function () {
+      var r = b.dataset.r, i = st.extra.indexOf(r); if (i >= 0) st.extra.splice(i, 1); else st.extra.push(r);
+      st.extra.sort(cmpTh); var keep = st.sel.slice(); refresh(keep);
+    }; });
+  }
   function defaults(log) {
-    var rooms = st.mode === 'room' ? [st.room] : Object.keys(st.students.reduce(function (o, x) { o[x._room] = 1; return o; }, {}));
+    var rooms = st.mode === 'room' && !st.extra.length ? [st.room] : Object.keys(st.students.reduce(function (o, x) { o[x._room] = 1; return o; }, {}));
     return Promise.all(rooms.map(function (r) { return Promise.all([getDaily(st.date, r).catch(function () { return null; }), getLineup(st.date, r)]); })).then(function (v) {
       var map = {}, src = {};
       if (log) { (log.records || []).forEach(function (r) { map[skey(r)] = r.status; }); return {map: map, src: 'saved'}; }
@@ -391,7 +412,7 @@ var Teach = (function () {
     loading(true);
     Promise.all([defaults(log), getSubjects().catch(function () { return {}; })]).then(function (v) {
       loading(false);
-      var map = v[0].map, src = v[0].src, subjects = v[1], title = st.mode === 'room' ? st.room : g.name;
+      var map = v[0].map, src = v[0].src, subjects = v[1], title = st.mode === 'room' ? [st.room].concat(st.extra).join(' + ') : g.name;
       var warn = '';
       var locked = L() && log && log.confirmed !== false;
       var noHelp = L() && !locked && !(st.help || {})[code];
@@ -437,8 +458,15 @@ var Teach = (function () {
     if (L() && st.sel.some(function (p) { return st.logged[p] && st.logged[p].confirmed !== false; })) return toast('มีคาบที่ครูยืนยันแล้ว แก้ไขไม่ได้', 'err');
     if (L() && !(st.help || {})[code]) return toast('วิชา ' + code + ' ครูผู้สอนบันทึกเอง', 'err');
     var rows = readRows(st.students, 'ts'), batch = db.batch();
-    if (st.mode === 'room') {
+    if (st.mode === 'room' && !st.extra.length) {
       st.sel.forEach(function (p) { batch.set(db.doc('p_class/' + st.date + '_' + roomId(st.room) + '_' + p), Object.assign({}, base, {room: st.room, roomId: roomId(st.room), records: rows, period: p})); });
+    } else if (st.mode === 'room') {
+      // เรียนรวมหลายห้อง: รายละเอียดเดียวกัน แยกเอกสารตามห้อง (ห้องละ 1 รายการ เหมือนสอนแยก)
+      var joint = [st.room].concat(st.extra), byR = {};
+      rows.forEach(function (r, i) { var rm = st.students[i]._room; (byR[rm] = byR[rm] || []).push(r); });
+      st.sel.forEach(function (p) { joint.forEach(function (rm) {
+        batch.set(db.doc('p_class/' + st.date + '_' + roomId(rm) + '_' + p), Object.assign({}, base, {room: rm, roomId: roomId(rm), records: byR[rm] || [], period: p, joint: joint}));
+      }); });
     } else {
       // กลุ่มเรียน: แยกบันทึกตามห้องของนักเรียน 1 ห้อง = 1 รายการ เพื่อให้รายงานรายห้อง/รายบุคคลนับถูกต้อง
       var g = group(), byRoom = {};
