@@ -11,6 +11,8 @@ window.WPP_CONFIG = {
   },
   // URL Web app ของ Apps Script ตัวส่ง Telegram (telegram.gs) — เว้นว่าง = ยังไม่แจ้งเตือน
   TELEGRAM_URL: 'https://script.google.com/macros/s/AKfycbzOPRWq8Yg9cF_2owUBYZSAbt3bdnxHlCpMeZdQLDF1G2ROOvOn1Hsp1TTjq1q_lm15/exec',
+  // URL Web app ของ area.gs (รับรูปส่งงานเขตพื้นที่ → Google Drive)
+  AREA_UPLOAD_URL: '',
   // ใช้เมื่อแอดมินยังไม่ได้ตั้งภาคเรียน
   TERM1_START_MONTH: 5,
   TERM2_START_MONTH: 11

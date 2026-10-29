@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ส่งงานเขตพื้นที่ · WPP</title>
+<meta name="theme-color" content="#1f9d6b">
+<link rel="icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600&amp;family=Sarabun:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{--ink:#243553;--muted:#6f7f97;--g:#1f9d6b;--g2:#146b4a;--line:#e3eaf4;--bad:#d94164;--warn:#d98a07}
+*{box-sizing:border-box}
+html,body{margin:0;background:#f2f8f5;color:var(--ink);font-family:'Sarabun',sans-serif;font-size:15px}
+button,input,select{font:inherit;color:inherit}
+h1,h2,h3,.btn,label,th,.seg button{font-family:'Prompt','Sarabun',sans-serif}
+[hidden]{display:none!important}
+.top{position:sticky;top:0;z-index:20;background:#fffffff2;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1000px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px}
+.top img{width:36px;height:36px;object-fit:contain}
+.top h1{font-size:16px;margin:0;line-height:1.25}.top small{display:block;color:var(--muted);font-size:11.5px;font-family:'Sarabun';font-weight:400}
+.who{margin-left:auto;text-align:right;font-size:12px;color:var(--muted);line-height:1.35}
+.who a,.who button{background:none;border:0;color:var(--g);padding:0;cursor:pointer;font-size:12px;text-decoration:underline}
+main{max-width:1000px;margin:0 auto;padding:14px 16px 60px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #1f5a420a}
+.card h2{font-size:16px;margin:0 0 6px;color:var(--g2);display:flex;align-items:center;gap:8px}
+.muted{color:var(--muted);font-size:13px}
+label{display:block;font-size:12.5px;font-weight:500;color:#4f607a;margin:0 0 4px}
+input,select{width:100%;min-height:44px;border:1px solid #d5e1ef;border-radius:11px;background:#f9fbfe;padding:9px 11px;font-size:15px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:10px 16px;border-radius:12px;border:1px solid #cfe7da;background:#eef9f3;color:var(--g2);font-size:14px;font-weight:500;cursor:pointer}
+.btn.pri{background:linear-gradient(110deg,#1fb07a,#0c8fd0);color:#fff;border:0}
+.btn.sm{min-height:32px;padding:5px 10px;font-size:12.5px;border-radius:9px}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.note{border-radius:12px;padding:10px 12px;font-size:13.5px;margin:10px 0;line-height:1.55}
+.note.info{background:#eef6fd;border:1px solid #cfe3f5;color:#2a5680}.note.ok{background:#ecf9f2;border:1px solid #bfe7d1;color:#17694a}
+.note.err{background:#fff0f3;border:1px solid #f6c9d5;color:#a3213f}.note.warn{background:#fff7e6;border:1px solid #f5d79a;color:#7a5200}
+.badge{margin-left:auto;font-size:12px;padding:3px 10px;border-radius:999px;background:#fff0f3;color:var(--bad);font-family:'Prompt';font-weight:500}
+.badge.ok{background:#e4f7ee;color:var(--g)}
+.pics{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin:10px 0}
+.pic{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#eef2f6;border:1px solid var(--line)}
+.pic img{width:100%;height:100%;object-fit:cover;display:block}
+.pic .t{position:absolute;left:0;right:0;bottom:0;background:#0008;color:#fff;font-size:11px;padding:2px 6px}
+.pic .x{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:0;background:#fffe;color:var(--bad);cursor:pointer;font-size:14px}
+.pic.up::after{content:'กำลังส่ง…';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#fffb;font-size:12px;font-family:'Prompt'}
+.login{max-width:420px;margin:7vh auto;padding:0 16px}
+.login .card{padding:22px}.login h1{text-align:center;font-size:21px;margin:8px 0 2px;color:var(--g2)}
+.seg{display:flex;background:#eef3f8;border-radius:12px;padding:4px;margin:16px 0}
+.seg button{flex:1;border:0;background:none;padding:9px;border-radius:9px;cursor:pointer;font-size:13.5px}
+.seg button.on{background:#fff;box-shadow:0 2px 6px #0001;color:var(--g2)}
+.stack>*+*{margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{border-bottom:1px solid #eef2f8;padding:9px 6px;text-align:center}
+th{font-size:12.5px;color:#4f607a;font-weight:500;background:#f6faf8}
+td:first-child,th:first-child{text-align:left}
+td.c{cursor:pointer;font-family:'Prompt'}
+td.y{color:var(--g)}td.n{color:#c9d2de}
+.lvl td{background:#fbfdfc}
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.sum div{background:#f6faf8;border-radius:12px;padding:10px;text-align:center}
+.sum b{display:block;font-size:20px;font-family:'Prompt';color:var(--g2)}
+.modal{position:fixed;inset:0;z-index:50;background:#1e2a4066;display:flex;align-items:flex-end;justify-content:center}
+.modal .box{background:#fff;width:100%;max-width:640px;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+@media(min-width:700px){.modal{align-items:center}.modal .box{border-radius:20px}}
+.loading{position:fixed;inset:0;z-index:60;background:#ffffffb0;display:flex;align-items:center;justify-content:center;font-family:'Prompt';color:var(--g2)}
+</style>
+</head>
+<body>
+<header class="top" id="top" hidden><div class="top-in">
+ <a href="index.html"><img src="logo.png" alt="หน้าหลัก" onerror="this.style.display='none'"></a>
+ <div><h1>ส่งงานเขตพื้นที่ประจำวัน</h1><small>โรงเรียนวังโพรงพิทยาคม</small></div>
+ <div class="who"><span id="whoName"></span><br><a href="index.html">🏠 หน้าหลัก</a> · <button id="logoutBtn">ออกจากระบบ</button></div>
+</div></header>
+
+<section class="login" id="loginView" hidden>
+ <div class="card">
+  <div style="text-align:center"><img src="logo.png" alt="" width="72" height="72" onerror="this.style.display='none'"></div>
+  <h1>ส่งงานเขตพื้นที่</h1><p class="muted" style="text-align:center;margin:0">เขตพื้นที่ · เวรห้องน้ำ · ทำความสะอาดห้องเรียน</p>
+  <div class="seg"><button type="button" id="segLeader" class="on">🧑‍🎓 หัวหน้าห้อง</button><button type="button" id="segTeacher">👩‍🏫 ครู / ผู้ดูแล</button></div>
+  <form id="leaderLogin" class="stack">
+   <div><label for="lSid">เลขประจำตัวนักเรียน</label><input id="lSid" inputmode="numeric" autocomplete="username" required></div>
+   <div><label for="lPin">PIN 6 หลัก</label><input id="lPin" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" required></div>
+   <button class="btn pri" style="width:100%">เข้าสู่ระบบ</button>
+   <p class="muted" style="margin:0">ใช้เลขประจำตัว + PIN เดียวกับหน้า "บันทึกเวลาเรียน"</p>
+  </form>
+  <div id="teacherLogin" class="stack" hidden>
+   <button class="btn pri" id="gLogin" style="width:100%">เข้าสู่ระบบด้วย Google</button>
+   <form id="tForm" class="stack">
+    <div><label for="tEmail">อีเมล</label><input id="tEmail" type="email" autocomplete="username" required></div>
+    <div><label for="tPw">รหัสผ่าน</label><input id="tPw" type="password" autocomplete="current-password" required></div>
+    <button class="btn" style="width:100%">เข้าสู่ระบบด้วยอีเมล</button>
+   </form>
+  </div>
+  <div class="note err" id="loginMsg" hidden></div>
+ </div>
+</section>
+
+<main id="app" hidden></main>
+<div class="modal" id="modal" hidden><div class="box" id="modalBox"></div></div>
+<div class="loading" id="loading" hidden>กำลังโหลด…</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script src="area.js"></script>
+</body>
+</html>
