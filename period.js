@@ -851,6 +851,7 @@ var Admin = (function () {
   function parseRows(rows) { // แถวจาก Excel: เลขที่ | เลขประจำตัว | ชื่อ | ห้อง (เรียงคอลัมน์ไหนก็ได้ ระบบเดาจากรูปแบบ)
     return rows.map(function (c) {
       c = c.map(function (x) { return String(x == null ? '' : x).trim(); }).filter(Boolean); if (!c.length) return null;
+      if (c.some(function (v) { return /^(เลขที่|เลขประจำตัว|ชื่อ|ชื่อ\s*[–-]\s*นามสกุล|ชื่อ\s*[–-]\s*สกุล|ห้อง|ชั้น)$/.test(v); })) return null; // แถวหัวตาราง
       var o = {}; c.forEach(function (v) {
         if (/^ม\.?\s*\d+\s*\/\s*\d+$/.test(v)) o.room = v.replace(/\s/g, '').replace(/^ม(?!\.)/, 'ม.');
         else if (/^\d{4,}$/.test(v)) o.sid = v;
@@ -872,7 +873,7 @@ var Admin = (function () {
             '<button class="btn sm" onclick="Admin.editGroup(\'' + g.id + '\')">✎ แก้ไข</button><button class="btn sm danger" onclick="Admin.delGroup(\'' + g.id + '\')">🗑</button></div>';
         }).join('') : '<div class="note info">ยังไม่มีกลุ่มเรียน</div>') +
         '<div class="row" style="margin-top:12px"><button class="btn pri" style="flex:1" onclick="Admin.editGroup(\'\')">＋ สร้างกลุ่มใหม่</button></div></div>' +
-        '<div class="card"><h2>นำเข้าจากไฟล์ Excel</h2><p class="muted">1 ชีต = 1 กลุ่ม (ชื่อชีต = ชื่อกลุ่ม) · คอลัมน์: <b>เลขที่ | เลขประจำตัว | ชื่อ–นามสกุล | ห้อง</b> · ถ้ามีกลุ่มชื่อเดียวกันอยู่แล้ว จะแทนที่รายชื่อสมาชิก (ครู/คาบเดิมยังอยู่)</p><input type="file" id="gFile" accept=".xlsx,.xls"><div id="gPrev"></div></div>';
+        '<div class="card"><h2>นำเข้าจากไฟล์ Excel</h2><p class="muted">1 ชีต = 1 กลุ่ม (ชื่อชีต = ชื่อกลุ่ม) · คอลัมน์: <b>เลขที่ | เลขประจำตัว | ชื่อ–นามสกุล | ห้อง</b><br>ถ้ามีชีตชื่อ <b>"รายวิชา"</b> (กลุ่ม | รหัสวิชา | ชื่อวิชา | ครูผู้สอน) ระบบจะใส่รหัสวิชาและครูให้ด้วย · กลุ่มชื่อเดิมจะถูกอัปเดต (คาบเรียนเดิมยังอยู่)</p><input type="file" id="gFile" accept=".xlsx,.xls"><div id="gPrev"></div></div>';
       $('gFile').onchange = function () { importGroupsFile(this.files[0]); };
     }).catch(fail);
   }
@@ -881,24 +882,46 @@ var Admin = (function () {
     if (window.XLSX) return Promise.resolve();
     return new Promise(function (ok, no) { var sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; sc.onload = ok; sc.onerror = function () { no(new Error('โหลดตัวอ่าน Excel ไม่สำเร็จ')); }; document.head.appendChild(sc); });
   }
+  function teacherMatcher(snap) { // จับคู่ครูจากชื่อ (มี/ไม่มีคำนำหน้า) หรืออีเมล
+    var ts = []; snap.forEach(function (d) { ts.push({email: d.id, name: normName(d.data().name || '')}); });
+    var bare = function (n) { return normName(n).replace(/^(นางสาว|นาง|นาย|ว่าที่\s*ร\.?\s*ต\.?\s*(หญิง)?|ดร\.)\s*/, '').replace(/\s/g, ''); };
+    return function (q) { q = normName(q); if (!q) return null; var lo = q.toLowerCase();
+      return ts.find(function (t) { return t.email === lo; }) || ts.find(function (t) { return t.name === q; }) || ts.find(function (t) { return t.name && bare(t.name) === bare(q); }) || null; };
+  }
   function importGroupsFile(file) {
     if (!file) return; loading(true, 'กำลังอ่านไฟล์…');
-    Promise.all([loadXlsx(), allStudents(), getGroups(true)]).then(function (v) {
-      var all = v[1], gs = v[2];
+    Promise.all([loadXlsx(), allStudents(), getGroups(true), db.collection('teachers').get(), getSubjects()]).then(function (v) {
+      var all = v[1], gs = v[2], findT = teacherMatcher(v[3]), subj = v[4];
       return file.arrayBuffer().then(function (buf) {
-        var wb = XLSX.read(buf, {type: 'array'}), plan = [];
+        var wb = XLSX.read(buf, {type: 'array'}), plan = [], meta = {};
+        var metaSheet = wb.SheetNames.find(function (n) { return /^(รายวิชา|ข้อมูลกลุ่ม)$/.test(n.trim()); });
+        if (metaSheet) XLSX.utils.sheet_to_json(wb.Sheets[metaSheet], {header: 1, raw: false, defval: ''}).forEach(function (r) {
+          var c = r.map(function (x) { return String(x).trim(); }); if (!c[0] || /^(กลุ่ม|ชื่อกลุ่ม|ชีต)/.test(c[0]) || /^คำอธิบาย|^หมายเหตุ/.test(c[0])) return;
+          var tnames = String(c[3] || '').split(/\s*[,\/\n]\s*/).filter(Boolean);
+          meta[c[0]] = {code: c[1] || '', subject: c[2] || subj[c[1]] || '', teachers: tnames.map(function (n) { var t = findT(n); return t ? t.email : null; }).filter(Boolean), missT: tnames.filter(function (n) { return !findT(n); })};
+        });
         wb.SheetNames.forEach(function (sn) {
+          if (sn === metaSheet) return;
           var rows = parseRows(XLSX.utils.sheet_to_json(wb.Sheets[sn], {header: 1, raw: false, defval: ''})), mem = [], miss = [];
           rows.forEach(function (r) { var m = matchMember(all, r); if (m) { if (!mem.some(function (x) { return x.room === m.room && skey(x) === skey(m); })) mem.push({room: m.room, no: m.no, name: m.name, sid: m.sid || r.sid || ''}); } else miss.push(r); });
-          if (rows.length) plan.push({name: sn.trim(), members: mem, miss: miss, exist: gs.find(function (g) { return g.name === sn.trim(); })});
+          if (rows.length) plan.push({name: sn.trim(), members: mem, miss: miss, meta: meta[sn.trim()], exist: gs.find(function (g) { return g.name === sn.trim(); })});
         });
         loading(false);
         if (!plan.length) return toast('ไม่พบรายชื่อในไฟล์', 'err');
-        $('gPrev').innerHTML = '<div class="note info">' + plan.map(function (p) { return '<b>' + esc(p.name) + '</b> ' + (p.exist ? '(แทนที่รายชื่อเดิม)' : '(กลุ่มใหม่)') + ': พบ ' + p.members.length + ' คน' + (p.miss.length ? ' · <span style="color:var(--bad)">ไม่พบในระบบ ' + p.miss.length + ' คน: ' + p.miss.map(function (m) { return esc((m.room || '') + ' ' + (m.name || m.sid)); }).join(', ') + '</span>' : ''); }).join('<br>') + '</div><button class="btn pri" style="width:100%" id="gDo">ยืนยันนำเข้า ' + plan.length + ' กลุ่ม</button>';
+        $('gPrev').innerHTML = '<div class="note info">' + plan.map(function (p) { var m = p.meta;
+          return '<b>' + esc(p.name) + '</b> ' + (p.exist ? '(อัปเดตกลุ่มเดิม)' : '(กลุ่มใหม่)') + ': พบ ' + p.members.length + ' คน' +
+            (m ? ' · ' + esc(m.code) + ' · ครู ' + (m.teachers.length ? m.teachers.length + ' คน' : '-') + (m.missT.length ? ' · <span style="color:var(--bad)">ไม่พบครู: ' + esc(m.missT.join(', ')) + ' (เพิ่มครูในระบบเช็คเข้าแถวก่อน หรือเลือกภายหลัง)</span>' : '') : '') +
+            (p.miss.length ? ' · <span style="color:var(--bad)">ไม่พบนักเรียน ' + p.miss.length + ' คน: ' + p.miss.map(function (m) { return esc((m.room || '') + ' ' + (m.name || m.sid)); }).join(', ') + '</span>' : ''); }).join('<br>') + '</div><button class="btn pri" style="width:100%" id="gDo">ยืนยันนำเข้า ' + plan.length + ' กลุ่ม</button>';
         $('gDo').onclick = function () {
           var batch = db.batch();
-          plan.forEach(function (p) { var ref = p.exist ? db.doc('p_groups/' + p.exist.id) : db.collection('p_groups').doc(); batch.set(ref, p.exist ? {members: p.members, updatedAt: FV.serverTimestamp()} : {name: p.name, code: '', subject: p.name, teachers: [], slots: [], members: p.members, updatedAt: FV.serverTimestamp()}, {merge: true}); });
-          loading(true); batch.commit().then(function () { loading(false); toast('นำเข้า ' + plan.length + ' กลุ่มแล้ว ✓ กด "แก้ไข" เพื่อกำหนดครูและคาบเรียน'); groups(); }).catch(fail);
+          plan.forEach(function (p) {
+            var ref = p.exist ? db.doc('p_groups/' + p.exist.id) : db.collection('p_groups').doc(), m = p.meta || {};
+            var data = {members: p.members, updatedAt: FV.serverTimestamp()};
+            if (!p.exist) { data.name = p.name; data.code = ''; data.subject = p.name; data.teachers = []; data.slots = []; }
+            if (m.code) data.code = m.code; if (m.subject) data.subject = m.subject; if (m.teachers && m.teachers.length) data.teachers = m.teachers;
+            batch.set(ref, data, {merge: true});
+          });
+          loading(true); batch.commit().then(function () { loading(false); toast('นำเข้า ' + plan.length + ' กลุ่มแล้ว ✓ กด "แก้ไข" เพื่อกำหนดคาบเรียน'); groups(); }).catch(fail);
         };
       });
     }).catch(fail);
