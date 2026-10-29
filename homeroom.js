@@ -40,7 +40,15 @@ var Advisors = {
       box.innerHTML = '<div class="card"><h2>👩‍🏫 ครูที่ปรึกษาประจำห้อง</h2><div class="muted">ห้องละไม่เกิน 2 คน · ใช้กับเล่มบันทึกโฮมรูม และครูที่ปรึกษาจะเห็นห้องของตัวเองก่อน</div>' +
         '<div style="overflow-x:auto;margin-top:10px"><table><thead><tr><th>ห้อง</th><th>ครูที่ปรึกษา 1</th><th>ครูที่ปรึกษา 2</th></tr></thead><tbody>' +
         Staff.rooms.map(function (r) { var a = A[roomId(r)] || []; return '<tr><td><b>' + esc(r) + '</b></td><td><select data-r="' + esc(roomId(r)) + '" data-i="0">' + opt(a[0]) + '</select></td><td><select data-r="' + esc(roomId(r)) + '" data-i="1">' + opt(a[1]) + '</select></td></tr>'; }).join('') +
-        '</tbody></table></div><button class="btn pri" style="width:100%;margin-top:12px" id="advSave">💾 บันทึกครูที่ปรึกษา</button></div>';
+        '</tbody></table></div><button class="btn pri" style="width:100%;margin-top:12px" id="advSave">💾 บันทึกครูที่ปรึกษา</button></div>' +
+        '<div class="card"><h2>🏠 ผู้บันทึกกิจกรรมโฮมรูม</h2><div class="muted">ใครเป็นคนติ๊กหัวข้อที่อบรม + แนบรูป (ใช้ทั้งโรงเรียน)</div><div class="stack" style="margin-top:10px">' +
+        [['leader', '🧑‍🎓 หัวหน้าห้อง', 'หัวหน้าห้องบันทึกในหน้าส่งงาน'], ['advisor', '👩‍🏫 ครูที่ปรึกษา', 'ครูบันทึกที่แท็บ 🏠 บันทึกโฮมรูม · หัวหน้าห้องไม่เห็นช่องโฮมรูม'], ['both', '🤝 ทั้งสองคน', 'ใครบันทึกก่อนก็ได้ แก้ไขต่อกันได้']].map(function (o) {
+          return '<label class="tr"><input type="radio" name="hrBy" value="' + o[0] + '"' + (HR_BY === o[0] ? ' checked' : '') + '> <span><b>' + o[1] + '</b><br><small class="muted">' + o[2] + '</small></span></label>'; }).join('') +
+        '</div><button class="btn pri" style="width:100%;margin-top:10px" id="hrBySave">💾 บันทึกผู้บันทึกโฮมรูม</button></div>';
+      $('hrBySave').onclick = function () {
+        var v = (box.querySelector('input[name=hrBy]:checked') || {}).value || 'leader';
+        loading(true); db.doc('p_settings/hr').set({by: v}).then(function () { loading(false); HR_BY = v; toast('บันทึกแล้ว ✓'); Staff.tab = 'adv'; Staff.show(); }).catch(fail);
+      };
       $('advSave').onclick = function () {
         var by = {};
         box.querySelectorAll('select[data-r]').forEach(function (s) { if (s.value) { (by[s.dataset.r] = by[s.dataset.r] || []); if (by[s.dataset.r].indexOf(s.value) < 0) by[s.dataset.r].push(s.value); } });
@@ -287,5 +295,56 @@ var Book = {
         sections: [{properties: {page: {size: {width: 11906, height: 16838}, margin: {top: 851, bottom: 851, left: 1021, right: 851}}}, children: kids}]});
       return D.Packer.toBlob(doc);
     });
+  }
+};
+
+// ---------- ครูที่ปรึกษาบันทึกโฮมรูมเอง (เมื่อแอดมินตั้งเป็น advisor หรือ both) ----------
+var TeacherHR = {
+  room: null, date: null, doc: null,
+  show: function (box) {
+    var T = this;
+    hrAdvisors().catch(function () { return {}; }).then(function (A) {
+      var mine = Staff.rooms.filter(function (r) { return (A[roomId(r)] || []).indexOf(me.email) >= 0; }), others = Staff.rooms.filter(function (r) { return mine.indexOf(r) < 0; });
+      T.room = T.room || mine[0] || Staff.rooms[0]; T.date = T.date || today();
+      box.innerHTML = '<div class="card"><h2>🏠 บันทึกกิจกรรมโฮมรูม</h2><div class="row"><div style="flex:1;min-width:130px"><label for="thRoom">ห้อง</label><select id="thRoom">' +
+        (mine.length ? '<optgroup label="ห้องที่ปรึกษาของฉัน">' + mine.map(function (r) { return '<option' + (r === T.room ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</optgroup>' : '') +
+        '<optgroup label="ห้องอื่น">' + others.map(function (r) { return '<option' + (r === T.room ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</optgroup></select></div>' +
+        '<div style="flex:1;min-width:130px"><label for="thDate">วันที่</label><input type="date" id="thDate" value="' + T.date + '"></div></div><div id="thBody"></div></div>';
+      $('thRoom').onchange = function () { T.room = this.value; T.load(); };
+      $('thDate').onchange = function () { T.date = this.value || today(); T.load(); };
+      T.load();
+    });
+  },
+  ref: function () { return db.doc('p_area/' + this.date + '_' + roomId(this.room)); },
+  load: function () {
+    var T = this; loading(true);
+    T.ref().get().then(function (s) { loading(false); T.doc = s.exists ? s.data() : {}; T.render(); }).catch(fail);
+  },
+  render: function () {
+    var T = this, hr = T.doc.hr || {}, hp = (T.doc.photos || {}).hr || [];
+    $('thBody').innerHTML = (hr.at ? '<div class="note ok">✓ บันทึกแล้ว ' + esc(hr.at) + ' น.' + (hr.byName ? ' โดย ' + esc(hr.byName) : '') + ' · แก้ไขแล้วบันทึกซ้ำได้</div>' : '') +
+      '<div class="traits">' + TRAITS.map(function (t) { return '<label class="tr"><input type="checkbox" value="' + esc(t) + '"' + ((hr.topics || []).indexOf(t) >= 0 ? ' checked' : '') + '> ' + esc(t) + '</label>'; }).join('') + '</div>' +
+      '<label for="thOther">อื่นๆ / รายละเอียดที่อบรม</label><input id="thOther" maxlength="200" value="' + esc(hr.other || '') + '">' +
+      '<button class="btn pri" style="width:100%;margin:10px 0" onclick="TeacherHR.save()">💾 บันทึกเรื่องที่อบรม</button>' +
+      '<div class="pics" id="thPics">' + hp.map(function (p) { return '<div class="pic"><a href="' + view(p.id) + '" target="_blank" rel="noopener"><img src="' + thumb(p.id) + '" alt="" loading="lazy"></a><span class="t">' + esc(p.t) + ' น.</span></div>'; }).join('') + '</div>' +
+      (hp.length < MAX_PICS ? '<label class="btn" style="width:100%">📷 แนบรูปกิจกรรม<input type="file" accept="image/*" multiple hidden onchange="TeacherHR.add(this)"></label>' : '');
+  },
+  base: function () { return {date: this.date, room: this.room, roomId: roomId(this.room), term: termFor(this.date), updated: FV.serverTimestamp()}; },
+  save: function () {
+    var T = this, topics = Array.prototype.map.call(document.querySelectorAll('#thBody .traits input:checked'), function (x) { return x.value; }), other = $('thOther').value.trim();
+    if (!topics.length && !other) return toast('เลือกเรื่องที่อบรมอย่างน้อย 1 ข้อ', 'err');
+    var d = T.base(); d.hr = {topics: topics, other: other, at: nowTime(), byName: me.name, byEmail: me.email};
+    loading(true); T.ref().set(d, {merge: true}).then(function () { loading(false); T.doc.hr = d.hr; toast('บันทึกโฮมรูมแล้ว ✓'); T.render(); }).catch(fail);
+  },
+  add: function (input) {
+    var T = this, files = Array.prototype.slice.call(input.files || []).slice(0, MAX_PICS - ((T.doc.photos || {}).hr || []).length), chain = Promise.resolve(), n = 0; input.value = '';
+    if (!files.length) return; loading(true, 'กำลังส่งรูป…');
+    files.forEach(function (f) {
+      chain = chain.then(function () { return shrink(f); }).then(function (data) { return upload(data, 'hr', T.date, T.room); }).then(function (id) {
+        var item = {id: id, t: nowTime()}, add = {updated: FV.serverTimestamp()}; add['photos.hr'] = FV.arrayUnion(item);
+        return T.ref().set(T.base(), {merge: true}).then(function () { return T.ref().update(add); }).then(function () { T.doc.photos = T.doc.photos || {}; (T.doc.photos.hr = T.doc.photos.hr || []).push(item); n++; });
+      });
+    });
+    chain.then(function () { loading(false); toast('ส่งรูปแล้ว ' + n + ' รูป ✓'); T.render(); }).catch(function (e) { fail(e); T.render(); });
   }
 };

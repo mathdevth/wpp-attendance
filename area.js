@@ -18,7 +18,7 @@ var DEFAULT_ROOMS = ['ม.1/1', 'ม.1/2', 'ม.2/1', 'ม.2/2', 'ม.3/1', 'ม
 
 firebase.initializeApp(CFG.FIREBASE);
 var auth = firebase.auth(), db = firebase.firestore(), FV = firebase.firestore.FieldValue;
-var me = null, termCfg = null;
+var me = null, termCfg = null, HR_BY = 'leader'; // ผู้บันทึกโฮมรูม: leader | advisor | both (p_settings/hr)
 
 function $(id) { return document.getElementById(id); }
 function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
@@ -77,13 +77,15 @@ auth.onAuthStateChanged(function (u) {
     p = db.doc('p_leaders/' + email).get().then(function (s) {
       if (!s.exists) throw new Error('บัญชีหัวหน้าห้องนี้ถูกยกเลิกแล้ว กรุณาติดต่อครู');
       var d = s.data(); me = {email: email, name: d.name, sid: d.sid, room: d.room, roomId: d.roomId, role: 'leader'};
-      return db.doc('settings/term').get().then(function (t) { termCfg = t.exists ? t.data() : null; }).catch(function () {});
+      return Promise.all([db.doc('settings/term').get().then(function (t) { termCfg = t.exists ? t.data() : null; }).catch(function () {}),
+        db.doc('p_settings/hr').get().then(function (t) { HR_BY = t.exists && t.data().by || 'leader'; }).catch(function () {})]);
     });
   } else if (!u.emailVerified) p = Promise.reject(new Error('กรุณายืนยันอีเมลในระบบเช็คเข้าแถวก่อน'));
   else p = db.doc('teachers/' + email).get().then(function (s) {
     if (!s.exists || s.data().active === false) throw new Error('อีเมล ' + email + ' ยังไม่ได้รับสิทธิ์ใช้งาน');
     var d = s.data(); me = {email: email, name: d.name || email, role: d.role === 'admin' ? 'admin' : 'teacher'};
-    return db.doc('settings/term').get().then(function (t) { termCfg = t.exists ? t.data() : null; }).catch(function () {});
+    return Promise.all([db.doc('settings/term').get().then(function (t) { termCfg = t.exists ? t.data() : null; }).catch(function () {}),
+      db.doc('p_settings/hr').get().then(function (t) { HR_BY = t.exists && t.data().by || 'leader'; }).catch(function () {})]);
   });
   p.then(function () {
     loading(false); $('loginView').hidden = true; $('top').hidden = false; $('app').hidden = false;
@@ -106,11 +108,11 @@ function shrink(file) {
     img.src = url;
   });
 }
-function upload(dataUrl, task, date) {
+function upload(dataUrl, task, date, room) {
   if (!CFG.AREA_UPLOAD_URL) return Promise.reject(new Error('ยังไม่ได้ตั้งค่า AREA_UPLOAD_URL ใน config.js'));
   return auth.currentUser.getIdToken().then(function (tok) {
     return fetch(CFG.AREA_UPLOAD_URL, {method: 'POST', headers: {'Content-Type': 'text/plain;charset=utf-8'},
-      body: JSON.stringify({idToken: tok, task: task, date: date, term: termFor(date), image: dataUrl})});
+      body: JSON.stringify({idToken: tok, task: task, date: date, room: room || '', term: termFor(date), image: dataUrl})});
   }).then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.error || 'ส่งรูปไม่สำเร็จ'); return j.id; });
 }
 
@@ -134,7 +136,8 @@ var Leader = {
   },
   render: function () {
     var L = this, ph = this.doc.photos || {}, done = 0, hr = this.doc.hr || {}, hp = ph.hr || [], saved = (hr.topics || []).length || hr.other;
-    $('lHr').innerHTML = '<div class="card"><h2>' + HR_TASK.icon + ' ' + HR_TASK.name + '<span class="badge' + (saved ? ' ok' : '') + '">' + (saved ? '✓ บันทึกแล้ว' + (hp.length ? ' · ' + hp.length + ' รูป' : '') : 'ยังไม่บันทึก') + '</span></h2>' +
+    if (HR_BY === 'advisor') $('lHr').innerHTML = '<div class="card"><h2>' + HR_TASK.icon + ' ' + HR_TASK.name + '<span class="badge' + (saved ? ' ok' : '') + '">' + (saved ? '✓ ครูบันทึกแล้ว' : 'ครูที่ปรึกษาบันทึก') + '</span></h2><div class="muted">โรงเรียนกำหนดให้ครูที่ปรึกษาเป็นผู้บันทึกโฮมรูม</div></div>';
+    else $('lHr').innerHTML = '<div class="card"><h2>' + HR_TASK.icon + ' ' + HR_TASK.name + '<span class="badge' + (saved ? ' ok' : '') + '">' + (saved ? '✓ บันทึกแล้ว' + (hp.length ? ' · ' + hp.length + ' รูป' : '') : 'ยังไม่บันทึก') + '</span></h2>' +
       '<div class="muted">' + HR_TASK.hint + '</div><div class="traits">' + TRAITS.map(function (t, i) {
         return '<label class="tr"><input type="checkbox" value="' + esc(t) + '"' + ((hr.topics || []).indexOf(t) >= 0 ? ' checked' : '') + '> ' + esc(t) + '</label>'; }).join('') + '</div>' +
       '<label for="hrOther">อื่นๆ / รายละเอียดที่อบรม</label><input id="hrOther" maxlength="200" value="' + esc(hr.other || '') + '" placeholder="เช่น ชี้แจงกำหนดสอบกลางภาค">' +
@@ -189,7 +192,7 @@ var Staff = {
   tab: 'day',
   show: function () {
     var S = this;
-    $('app').innerHTML = '<div class="stabs" id="sTabs"><button data-t="day">🧹 ตรวจรายวัน</button><button data-t="book">📘 เล่มโฮมรูม</button>' + (me.role === 'admin' ? '<button data-t="adv">👩‍🏫 ครูที่ปรึกษา</button>' : '') + '</div><div id="sView"></div>';
+    $('app').innerHTML = '<div class="stabs" id="sTabs"><button data-t="day">🧹 ตรวจรายวัน</button><button data-t="book">📘 เล่มโฮมรูม</button>' + (HR_BY !== 'leader' ? '<button data-t="hr">🏠 บันทึกโฮมรูม</button>' : '') + (me.role === 'admin' ? '<button data-t="adv">👩‍🏫 ครูที่ปรึกษา</button>' : '') + '</div><div id="sView"></div>';
     $('sTabs').querySelectorAll('button').forEach(function (b) { b.onclick = function () { S.tab = b.dataset.t; S.go(); }; });
     db.doc('p_settings/rooms').get().then(function (s) { S.rooms = s.exists && (s.data().list || []).length ? s.data().list : DEFAULT_ROOMS; }).catch(function () { S.rooms = DEFAULT_ROOMS; }).then(function () { S.go(); });
   },
@@ -197,6 +200,7 @@ var Staff = {
     var S = this; $('sTabs').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === S.tab); });
     if (S.tab === 'book') return Book.show($('sView'));
     if (S.tab === 'adv') return Advisors.show($('sView'));
+    if (S.tab === 'hr') return TeacherHR.show($('sView'));
     S.day();
   },
   day: function () {

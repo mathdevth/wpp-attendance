@@ -16,6 +16,7 @@
  *   p_class/{date}_{roomId}_{period}   {date,term,room,roomId,period,periods,code,subject,coTeacher,topic,work,records,note,teacher,teacherName,
  *                                        by:'leader'|'teacher', confirmed, leaderName, leaderSid, confirmedAt}
  *     หัวหน้าห้องบันทึกแทนได้ (confirmed:false) → ครูประจำวิชากดยืนยัน (ไอเดีย: นายกิตติศักดิ์ รัตนชัย)
+ *   p_help/{email}  {on:bool, codes:[…], name}   ครูเปิดให้หัวหน้าห้องช่วยบันทึกวิชาของตนเอง (ค่าเริ่มต้น: ปิด)
  */
 'use strict';
 
@@ -252,12 +253,15 @@ var Teach = (function () {
   var st = {date: today(), mode: 'room', room: '', gid: '', sel: [], students: [], logged: {}, warnDismissed: false};
   var L = function () { return me.role === 'leader'; };
   function init() {
-    if (L()) { st.mode = 'room'; st.room = me.room; }
-    Promise.all([L() ? [me.room] : getRooms(), L() ? [] : getGroups().catch(function () { return []; }), L() ? null : pending()]).then(function (v) {
+    st.sel = []; if (L()) { st.mode = 'room'; st.room = me.room; }
+    var help = L() ? db.collection('p_help').where('on', '==', true).get().then(function (q) { var c = {}; q.forEach(function (d) { (d.data().codes || []).forEach(function (x) { c[x] = d.data().name || 1; }); }); return c; }).catch(function () { return {}; })
+      : Promise.all([db.doc('p_help/' + me.email).get(), db.doc('p_teacherInfo/' + me.email).get()]).then(function (x) { return {on: x[0].exists && x[0].data().on === true, codes: x[1].exists ? x[1].data().codes || [] : []}; }).catch(function () { return {on: false, codes: []}; });
+    Promise.all([L() ? [me.room] : getRooms(), L() ? [] : getGroups().catch(function () { return []; }), L() ? null : pending(), help]).then(function (v) {
+      st.help = v[3];
       var rooms = v[0], gs = v[1].slice().sort(function (a, b) { return ((b.teachers || []).indexOf(me.email) >= 0) - ((a.teachers || []).indexOf(me.email) >= 0) || cmpTh(a.name, b.name); });
       st.groups = gs;
       $('v-teach').innerHTML =
-        (L() ? '' : '<div id="tPend"></div>') +
+        (L() ? '' : '<div id="tPend"></div>' + helpCard()) +
         '<div class="card"><h2>📝 บันทึกการเข้าเรียนรายคาบ</h2>' +
         (L() ? '<div class="note info">หัวหน้าห้องบันทึกแทนครูได้ · <b>ครูประจำวิชาจะตรวจและกดยืนยัน</b> รายการที่ครูยืนยันแล้วจะแก้ไม่ได้</div>' : '') +
         (gs.length ? '<div class="seg" id="tMode"><button type="button" data-m="room">🏫 สอนทั้งห้อง</button><button type="button" data-m="group">📚 วิชาเลือก / กลุ่มเรียน</button></div>' : '') +
@@ -273,8 +277,18 @@ var Teach = (function () {
       $('tRoom').onchange = function () { st.room = this.value; st.sel = []; refresh(); };
       $('tGroup').onchange = function () { st.gid = this.value; st.sel = []; refresh(); };
       if ($('tMode')) $('tMode').querySelectorAll('button').forEach(function (b) { b.onclick = function () { st.mode = b.dataset.m; st.sel = []; mode(); refresh(); }; });
-      mode(); refresh(); if (!L()) drawPending(v[2]);
+      mode(); refresh(); if (!L()) { drawPending(v[2]); if ($('tHelp')) $('tHelp').onchange = setHelp; }
     }).catch(fail);
+  }
+  // ---- สวิตช์: ครูให้หัวหน้าห้องช่วยบันทึกวิชาของตนเอง (ค่าเริ่มต้นปิด) ----
+  function helpCard() {
+    var h = st.help || {on: false, codes: []};
+    return '<div class="card" style="padding:12px 16px"><label style="display:flex;gap:10px;align-items:center;margin:0;cursor:pointer;font-size:14px"><input type="checkbox" id="tHelp" style="width:22px;height:22px;min-height:0;flex:0 0 auto"' + (h.on ? ' checked' : '') + (h.codes.length ? '' : ' disabled') + '>' +
+      '<span>🧑‍🎓 ให้หัวหน้าห้องช่วยบันทึกเวลาเรียนวิชาของฉัน <span class="muted">(ครูกดยืนยันภายหลัง · ครูยังบันทึกเองได้เสมอ)</span><br><small class="muted">' + (h.codes.length ? 'รหัสวิชา: ' + h.codes.map(esc).join(', ') : 'ยังไม่มีรหัสวิชาของครู — แจ้งแอดมินให้ใส่ที่ ผู้ดูแลระบบ → ครู/รายวิชา') + '</small></span></label></div>';
+  }
+  function setHelp() {
+    var on = this.checked, h = st.help; loading(true);
+    db.doc('p_help/' + me.email).set({on: on, codes: h.codes, name: me.name, updatedAt: FV.serverTimestamp()}).then(function () { loading(false); h.on = on; toast(on ? 'เปิดให้หัวหน้าห้องช่วยบันทึกแล้ว ✓' : 'ปิดแล้ว · หัวหน้าห้องบันทึกวิชาของครูไม่ได้'); }).catch(function (e) { $('tHelp').checked = !on; fail(e); });
   }
   // ---- รายการที่หัวหน้าห้องบันทึกแทน รอครูยืนยัน ----
   function pending() {
@@ -380,6 +394,8 @@ var Teach = (function () {
       var map = v[0].map, src = v[0].src, subjects = v[1], title = st.mode === 'room' ? st.room : g.name;
       var warn = '';
       var locked = L() && log && log.confirmed !== false;
+      var noHelp = L() && !locked && !(st.help || {})[code];
+      if (noHelp) { setBar(''); $('tBody').innerHTML = '<div class="card"><h2>' + esc(title) + ' · ' + st.sel.map(pLabel).join(' + ') + '</h2><div class="note info">' + (code ? 'วิชา ' + esc(code) + ' ' + esc(name) : 'คาบนี้') + ' <b>ครูผู้สอนบันทึกเอง</b> (ครูยังไม่ได้เปิดให้หัวหน้าห้องช่วยบันทึก)</div></div>'; return; }
       if (src === 'saved' && log.confirmed === false) warn = '<div class="note warn">⏳ หัวหน้าห้อง (' + esc(log.leaderName || '') + ') บันทึกแทนแล้ว · <b>รอครูยืนยัน</b>' + (L() ? ' · แก้ไขได้จนกว่าครูจะยืนยัน' : ' · ตรวจแล้วกดบันทึก = ยืนยัน') + '</div>';
       else if (locked) warn = '<div class="note ok">🔒 ' + esc(log.teacherName || 'ครูผู้สอน') + ' บันทึก/ยืนยันคาบนี้แล้ว หัวหน้าห้องแก้ไขไม่ได้</div>';
       else if (src === 'saved') warn = '<div class="note ok">✓ บันทึก ' + st.sel.map(pLabel).join(', ') + ' แล้วโดย ' + esc(log.teacherName || log.teacher) + (log.leaderName ? ' (หัวหน้าห้อง ' + esc(log.leaderName) + ' บันทึกเบื้องต้น)' : '') + ' · แก้ไขแล้วบันทึกทับได้</div>';
@@ -419,6 +435,7 @@ var Teach = (function () {
     if (L()) Object.assign(base, {teacher: '', teacherName: '', by: 'leader', confirmed: false, leaderName: me.name, leaderSid: me.sid});
     else Object.assign(base, {by: 'teacher', confirmed: true, leaderName: prev.leaderName || null, leaderSid: prev.leaderSid || null});
     if (L() && st.sel.some(function (p) { return st.logged[p] && st.logged[p].confirmed !== false; })) return toast('มีคาบที่ครูยืนยันแล้ว แก้ไขไม่ได้', 'err');
+    if (L() && !(st.help || {})[code]) return toast('วิชา ' + code + ' ครูผู้สอนบันทึกเอง', 'err');
     var rows = readRows(st.students, 'ts'), batch = db.batch();
     if (st.mode === 'room') {
       st.sel.forEach(function (p) { batch.set(db.doc('p_class/' + st.date + '_' + roomId(st.room) + '_' + p), Object.assign({}, base, {room: st.room, roomId: roomId(st.room), records: rows, period: p})); });
