@@ -621,17 +621,46 @@ var Duty = (function () {
 // หน้า: สถิติ / รายงาน
 // =====================================================================
 var Stats = (function () {
-  var st = {tab: 'class', start: '', end: today(), data: null};
+  var st = {tab: 'class', start: '', end: today(), data: null, fRoom: '', fCode: '', mine: false, myCodes: null}; // fRoom/fCode/mine = ตัวกรองใช้ทุกแท็บ
   var TABS = [['class', 'รายระดับชั้น'], ['person', 'รายบุคคล'], ['subject', 'รายวิชา'], ['teach', 'การเข้าสอน'], ['risk', 'กลุ่มเสี่ยง']];
   function init() {
     if (!st.start) { var t = today(); st.start = t.slice(0, 8) + '01'; }
     $('v-stats').innerHTML = '<div class="card"><h2>📊 สถิติและรายงาน</h2><div class="grid"><div><label for="sStart">ตั้งแต่วันที่</label><input type="date" id="sStart" value="' + st.start + '"></div><div><label for="sEnd">ถึงวันที่</label><input type="date" id="sEnd" value="' + st.end + '"></div><div style="align-self:end"><button class="btn pri" style="width:100%" id="sLoad">ดึงข้อมูล</button></div></div>' +
-      '<div class="chips" style="margin-top:12px" id="sTabs">' + TABS.map(function (t) { return '<button type="button" class="chip" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div><div id="sMsg" class="muted" style="margin-top:8px"></div></div><div id="sBody"></div>';
+      '<div class="chips" style="margin-top:12px" id="sTabs">' + TABS.map(function (t) { return '<button type="button" class="chip" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div><div id="sFilt"></div><div id="sMsg" class="muted" style="margin-top:8px"></div></div><div id="sBody"></div>';
     $('sStart').onchange = function () { st.start = this.value; st.data = null; };
     $('sEnd').onchange = function () { st.end = this.value; st.data = null; };
     $('sLoad').onclick = function () { st.data = null; load(); };
     $('sTabs').querySelectorAll('.chip').forEach(function (b) { b.onclick = function () { st.tab = b.dataset.t; tabs(); render(); }; });
+    db.doc('p_teacherInfo/' + me.email).get().then(function (x) { st.myCodes = x.exists ? x.data().codes || [] : []; }).catch(function () { st.myCodes = []; }).then(filters);
     tabs(); if (st.data) render(); else $('sBody').innerHTML = '<div class="card muted">เลือกช่วงวันที่ แล้วกด "ดึงข้อมูล"</div>';
+  }
+  // ---- ตัวกรอง ห้อง / รหัสวิชา / เฉพาะวิชาของฉัน (ใช้กับทุกแท็บ) ----
+  function filters() {
+    var box = $('sFilt'); if (!box) return;
+    var D = st.data, codes = {}, rooms = D ? D.rooms : [];
+    if (D) D.logs.forEach(function (l) { if (l.code) codes[l.code] = l.subject || D.subjects[l.code] || ''; });
+    var my = st.myCodes || [];
+    box.innerHTML = '<div class="grid" style="margin-top:12px"><div><label for="fRoomAll">กรองห้อง</label><select id="fRoomAll"><option value="">ทุกห้อง</option>' + rooms.map(function (r) { return '<option' + (r === st.fRoom ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></div>' +
+      '<div><label for="fCodeAll">กรองรายวิชา</label><select id="fCodeAll"' + (st.mine ? ' disabled' : '') + '><option value="">ทุกวิชา</option>' + Object.keys(codes).sort(cmpTh).map(function (c) { return '<option value="' + esc(c) + '"' + (c === st.fCode ? ' selected' : '') + '>' + esc(c + (codes[c] ? ' ' + codes[c] : '')) + '</option>'; }).join('') + '</select></div>' +
+      (my.length ? '<div style="align-self:end"><label style="display:flex;gap:8px;align-items:center;min-height:44px;margin:0;cursor:pointer"><input type="checkbox" id="fMine" style="width:20px;height:20px;min-height:0"' + (st.mine ? ' checked' : '') + '> เฉพาะวิชาของฉัน</label></div>' : '') + '</div>' +
+      (st.fRoom || st.fCode || st.mine ? '<div class="note info" style="margin:8px 0 0">🔎 กำลังกรอง: ' + [st.fRoom, st.mine ? 'วิชาของฉัน (' + my.join(', ') + ')' : st.fCode].filter(Boolean).map(esc).join(' · ') + ' <button class="btn sm" type="button" id="fClear">ล้างตัวกรอง</button></div>' : '');
+    $('fRoomAll').onchange = function () { st.fRoom = this.value; filters(); render(); };
+    $('fCodeAll').onchange = function () { st.fCode = this.value; filters(); render(); };
+    if ($('fMine')) $('fMine').onchange = function () { st.mine = this.checked; filters(); render(); };
+    if ($('fClear')) $('fClear').onclick = function () { st.fRoom = ''; st.fCode = ''; st.mine = false; filters(); render(); };
+  }
+  // ข้อมูลหลังกรอง — ทุกแท็บใช้ view() แทน st.data (ข้อมูลต้นฉบับไม่ถูกแก้)
+  function view() {
+    var D = st.data; if (!D) return D;
+    var codes = st.mine ? st.myCodes || [] : st.fCode ? [st.fCode] : null, room = st.fRoom;
+    if (!codes && !room) return D;
+    var keep = function (r) { return !room || r === room; };
+    return Object.assign({}, D, {
+      logs: D.logs.filter(function (l) { return keep(l.room) && (!codes || codes.indexOf(l.code) >= 0); }),
+      daily: D.daily.filter(function (d) { return keep(d.room); }),
+      rooms: D.rooms.filter(keep),
+      lineup: Object.keys(D.lineup).reduce(function (o, k) { if (keep(k.split('|')[1])) o[k] = D.lineup[k]; return o; }, {})
+    });
   }
   function tabs() { $('sTabs').querySelectorAll('.chip').forEach(function (b) { b.classList.toggle('on', b.dataset.t === st.tab); }); }
   function load() {
@@ -646,6 +675,7 @@ var Stats = (function () {
         loading(false);
         var students = {}; v[3].forEach(function (r, i) { students[r] = stu[i]; });
         st.data = {logs: logs, daily: daily, lineup: lineup, rooms: v[3], students: students, subjects: v[4]};
+        filters();
         $('sMsg').textContent = 'ข้อมูล ' + thDate(st.start) + ' – ' + thDate(st.end) + ' · บันทึกการสอน ' + logs.length + ' คาบ · เช็คชื่อประจำวัน ' + daily.length + ' รายการ';
         render();
       });
@@ -681,7 +711,7 @@ var Stats = (function () {
   function statusOf(map, s) { var lock = LOCK.indexOf(s.status) >= 0; return lock ? s.status : (map && map[skey(s)]) || null; }
   // ---- รายระดับชั้น ----
   function byClass() {
-    var D = st.data, dailyBy = {}; D.daily.forEach(function (d) { dailyBy[d.date + '|' + d.room] = d; });
+    var D = view(), dailyBy = {}; D.daily.forEach(function (d) { dailyBy[d.date + '|' + d.room] = d; });
     var cols = PERIODS.concat(['HOME']);
     var head = ['ห้อง', 'นักเรียน'].concat(cols.map(function (p) { return p === 'HR' ? 'โฮมรูม' : p === 'HOME' ? HOME_LABEL : 'คาบ ' + p; })).concat(['มา', 'ขาด', 'ลาป่วย', 'ลากิจ', 'กิจกรรม']);
     var rows = D.rooms.map(function (room) {
@@ -701,7 +731,7 @@ var Stats = (function () {
   }
   // ---- รายบุคคล ----
   function byPerson() {
-    var D = st.data;
+    var D = view();
     $('sBody').innerHTML = '<div class="card"><h2>รายงานรายบุคคล</h2><div class="grid"><div><label for="pRoom">ห้อง</label><select id="pRoom">' + D.rooms.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('') + '</select></div><div><label for="pStu">นักเรียน</label><select id="pStu"></select></div><div><label for="pSid">หรือค้นด้วยเลขประจำตัว</label><input id="pSid" inputmode="numeric" placeholder="เลขประจำตัว"></div></div><div id="pOut"></div></div>';
     var fill = function () { var l = D.students[$('pRoom').value] || []; $('pStu').innerHTML = l.map(function (s, i) { return '<option value="' + i + '">' + esc(s.no + '. ' + s.name) + '</option>'; }).join(''); out(); };
     $('pRoom').onchange = fill; $('pStu').onchange = out;
@@ -709,7 +739,7 @@ var Stats = (function () {
     fill();
   }
   function out() {
-    var D = st.data, room = $('pRoom').value, s = (D.students[room] || [])[+$('pStu').value];
+    var D = view(), room = $('pRoom').value, s = (D.students[room] || [])[+$('pStu').value];
     if (!s) { $('pOut').innerHTML = '<p class="muted">ไม่มีรายชื่อ</p>'; return; }
     var k = skey(s), dates = {}, total = {};
     D.logs.forEach(function (l) { if (l.room !== room) return; var r = (l.records || []).find(function (x) { return skey(x) === k; }); if (!r) return; (dates[l.date] = dates[l.date] || {})[l.period] = r.status; total[r.status] = (total[r.status] || 0) + 1; });
@@ -724,7 +754,7 @@ var Stats = (function () {
   }
   // ---- รายวิชา ----
   function bySubject() {
-    var D = st.data, g = {};
+    var D = view(), g = {};
     D.logs.forEach(function (l) {
       var k = l.code + '|' + l.room, x = g[k] = g[k] || {code: l.code, subject: l.subject || D.subjects[l.code] || '', room: l.room, teachers: {}, periods: 0, seats: 0, present: 0, absent: 0, late: 0, leave: 0};
       x.periods++; x.teachers[l.teacherName || l.teacher] = 1;
@@ -739,7 +769,7 @@ var Stats = (function () {
   }
   // ---- รายงานการเข้าสอน ----
   function teachLog() {
-    var D = st.data, logs = D.logs.slice().sort(function (a, b) { return b.date.localeCompare(a.date) || cmpTh(a.room, b.room) || PERIODS.indexOf(a.period) - PERIODS.indexOf(b.period); });
+    var D = view(), logs = D.logs.slice().sort(function (a, b) { return b.date.localeCompare(a.date) || cmpTh(a.room, b.room) || PERIODS.indexOf(a.period) - PERIODS.indexOf(b.period); });
     var uniq = function (f) { var o = {}; logs.forEach(function (l) { var v = f(l); if (v) o[v] = 1; }); return Object.keys(o).sort(cmpTh); };
     var sel = function (id, label, vals) { return '<div><label for="' + id + '">' + label + '</label><select id="' + id + '"><option value="">ทั้งหมด</option>' + vals.map(function (v) { return '<option>' + esc(v) + '</option>'; }).join('') + '</select></div>'; };
     $('sBody').innerHTML = '<div class="card"><h2>รายงานการเข้าสอน</h2><div class="grid">' + sel('fCode', 'รหัสวิชา', uniq(function (l) { return l.code; })) + sel('fRoom', 'ชั้น/ห้อง', uniq(function (l) { return l.room; })) + sel('fT', 'ผู้สอน', uniq(function (l) { return l.teacherName || l.teacher; })) + '</div><div id="tOut" style="margin-top:12px"></div></div>';
@@ -758,7 +788,7 @@ var Stats = (function () {
   }
   // ---- กลุ่มเสี่ยง ----
   function risk() {
-    var D = st.data, g = {};
+    var D = view(), g = {};
     D.logs.forEach(function (l) {
       (l.records || []).forEach(function (r) {
         if (LOCK.indexOf(r.status) >= 0) return;

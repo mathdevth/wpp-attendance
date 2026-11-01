@@ -78,6 +78,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid #8cc6ee;border-color:#
 .tbl-wrap{overflow:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:12px;max-height:70vh}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th{position:sticky;top:0;background:var(--blue);color:#fff;font-weight:500;font-size:12px;padding:8px 6px;white-space:nowrap;z-index:1}
+.tbl-wrap{isolation:isolate}th{-webkit-transform:translateZ(0);transform:translateZ(0)}
+.tbl-wrap td.l:first-child{position:sticky;left:0;background:#fff;z-index:1;box-shadow:1px 0 0 var(--line)}.tbl-wrap th:first-child{left:0;z-index:2}
 td{padding:7px 6px;border-bottom:1px solid #eef2f8;text-align:center;white-space:nowrap}
 td.l{text-align:left}
 td.wrap{white-space:normal;min-width:160px;text-align:left}
