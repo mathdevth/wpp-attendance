@@ -1133,7 +1133,8 @@ var Admin = (function () {
     Promise.all([getRooms(), getSubjects()]).then(function (v) {
       var rs = v[0], subj = v[1];
       $('aBody').innerHTML = '<div class="card"><h2>ตารางเรียน</h2><div class="row"><div style="flex:1;min-width:150px"><label for="ttRoom">ห้อง</label><select id="ttRoom">' + rs.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('') + '</select></div><div style="flex:1;min-width:150px"><label for="ttCopy">คัดลอกตารางไปห้อง</label><select id="ttCopy"><option value="">—</option>' + rs.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('') + '</select></div></div>' +
-        '<p class="muted">ใส่รหัสวิชาในแต่ละช่อง (ชื่อวิชาดึงจากแท็บครู/รายวิชาอัตโนมัติ) · ปกติเรียนถึงคาบ 8 · ช่องว่าง = ไม่มีเรียน</p><datalist id="ttSubj">' + Object.keys(subj).sort().map(function (c) { return '<option value="' + esc(c) + '">' + esc(subj[c]) + '</option>'; }).join('') + '</datalist><div id="ttGrid"></div><button class="btn pri" style="width:100%;margin-top:12px" id="ttSave">บันทึกตารางเรียน</button></div>';
+        '<p class="muted">ใส่รหัสวิชาในแต่ละช่อง (ชื่อวิชาดึงจากแท็บครู/รายวิชาอัตโนมัติ) · ปกติเรียนถึงคาบ 8 · ช่องว่าง = ไม่มีเรียน</p><datalist id="ttSubj">' + Object.keys(subj).sort().map(function (c) { return '<option value="' + esc(c) + '">' + esc(subj[c]) + '</option>'; }).join('') + '</datalist><div id="ttGrid"></div><button class="btn pri" style="width:100%;margin-top:12px" id="ttSave">บันทึกตารางเรียน</button></div>' +
+        '<div class="card"><h2>📥 นำเข้าตารางทั้งโรงเรียนจาก Excel</h2><p class="muted">ใช้เมื่อเปลี่ยนตารางสอนทั้งภาคเรียน · ชีตแรก คอลัมน์: <b>ห้อง | วัน | คาบ | รหัสวิชา | ครูผู้สอน</b> (1 แถว = 1 คาบ) · ห้องที่อยู่ในไฟล์จะถูกแทนที่ทั้งตาราง ห้องที่ไม่อยู่ในไฟล์ไม่เปลี่ยน</p><input type="file" id="ttFile" accept=".xlsx,.xls"><div id="ttPrev"></div></div>';
       var load = function () {
         var room = $('ttRoom').value; delete cache['tt_' + room];
         getTimetable(room).then(function (slots) {
@@ -1142,6 +1143,7 @@ var Admin = (function () {
         }).catch(fail);
       };
       $('ttRoom').onchange = load;
+      $('ttFile').onchange = function () { importTimetable(this.files[0], subj, rs); };
       $('ttSave').onclick = function () {
         var room = $('ttRoom').value, slots = {};
         $('ttGrid').querySelectorAll('input').forEach(function (inp) { var c = inp.value.trim(); if (c) slots[inp.dataset.k] = {code: c, name: subj[c] || ''}; });
@@ -1150,6 +1152,50 @@ var Admin = (function () {
         loading(true); batch.commit().then(function () { targets.forEach(function (r) { delete cache['tt_' + r]; }); cache.ttAll = null; loading(false); toast('บันทึกตาราง ' + targets.join(', ') + ' ✓'); }).catch(fail);
       };
       load();
+    }).catch(fail);
+  }
+  // ---- นำเข้าตารางทั้งโรงเรียน (ห้อง | วัน | คาบ | รหัสวิชา | ครูผู้สอน) ----
+  function importTimetable(file, subj, rs) {
+    if (!file) return; loading(true, 'กำลังอ่านไฟล์…');
+    var DN = {'จันทร์': 1, 'จ': 1, 'อังคาร': 2, 'อ': 2, 'พุธ': 3, 'พ': 3, 'พฤหัสบดี': 4, 'พฤหัส': 4, 'พฤหัสฯ': 4, 'พฤ': 4, 'ศุกร์': 5, 'ศ': 5};
+    Promise.all([loadXlsx(), db.collection('teachers').get(), getAllTimetables()]).then(function (v) {
+      var findT = teacherMatcher(v[1]), oldTT = v[2];
+      return file.arrayBuffer().then(function (buf) {
+        var wb = XLSX.read(buf, {type: 'array'}), rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, raw: false, defval: ''});
+        var plan = {}, codes = {}, missT = {}, badRoom = {}, bad = 0;
+        rows.forEach(function (r) {
+          var c = r.map(function (x) { return String(x).trim(); }); if (!c[0] || /^ห้อง/.test(c[0])) return;
+          var room = c[0].replace(/\s/g, ''), d = DN[c[1].replace(/^วัน/, '')] || (+c[1] >= 1 && +c[1] <= 5 ? +c[1] : 0), per = c[2].replace(/^คาบ(ที่)?\s*/, ''), code = c[3].replace(/\s/g, '');
+          if (rs.indexOf(room) < 0) { badRoom[room] = 1; return; }
+          if (!d || PERIODS.indexOf(per === 'โฮมรูม' ? 'HR' : per) < 0 || !code) { bad++; return; }
+          if (per === 'โฮมรูม') per = 'HR';
+          (plan[room] = plan[room] || {})[d + '-' + per] = {code: code, name: subj[code] || ''};
+          if (c[4]) { var t = findT(c[4]); if (t) (codes[t.email] = codes[t.email] || {})[code] = 1; else missT[c[4]] = 1; }
+        });
+        loading(false);
+        var rooms = Object.keys(plan).sort(cmpTh), tcount = Object.keys(codes).length;
+        if (!rooms.length) { $('ttPrev').innerHTML = '<div class="note warn" style="margin-top:10px">ไม่พบแถวที่อ่านได้ ตรวจหัวคอลัมน์: ห้อง | วัน | คาบ | รหัสวิชา | ครูผู้สอน</div>'; return; }
+        $('ttPrev').innerHTML = '<div class="note info" style="margin-top:10px">พบ <b>' + rooms.length + ' ห้อง</b>: ' + rooms.map(function (r) { return esc(r) + ' (' + Object.keys(plan[r]).length + ' คาบ)'; }).join(', ') +
+          (bad ? '<br>⚠️ ข้ามแถวที่อ่านไม่ได้ ' + bad + ' แถว' : '') + (Object.keys(badRoom).length ? '<br>⚠️ ห้องที่ไม่มีในระบบ (ข้าม): ' + esc(Object.keys(badRoom).join(', ')) : '') +
+          (Object.keys(missT).length ? '<br>⚠️ ไม่พบชื่อครูในระบบ (ไม่อัปเดตรหัสวิชาให้): ' + esc(Object.keys(missT).join(', ')) : '') + '</div>' +
+          '<label class="hr-tr" style="margin-top:8px"><input type="checkbox" id="ttKeepHr" checked> คงคาบโฮมรูม (HR) เดิมไว้ ถ้าไฟล์ไม่มีคาบ HR</label>' +
+          '<label class="hr-tr"><input type="checkbox" id="ttCodes"' + (tcount ? ' checked' : ' disabled') + '> อัปเดต "รหัสวิชาที่สอน" ของครู ' + tcount + ' คน ตามไฟล์ (แทนที่ของภาคเรียนเดิม)</label>' +
+          '<button class="btn pri" style="width:100%;margin-top:10px" id="ttDo">ยืนยันนำเข้า ' + rooms.length + ' ห้อง</button>';
+        $('ttDo').onclick = function () {
+          if (!confirm('แทนที่ตารางเรียน ' + rooms.length + ' ห้อง?\n(บันทึกเวลาเรียนที่ผ่านมาไม่ถูกแก้ไข)')) return;
+          var keepHr = $('ttKeepHr').checked, upd = $('ttCodes').checked, batch = db.batch();
+          rooms.forEach(function (r) {
+            var slots = plan[r], old = oldTT[r] || {};
+            if (keepHr) Object.keys(old).forEach(function (k) { if (/-HR$/.test(k) && !slots[k]) slots[k] = old[k]; });
+            batch.set(db.doc('p_timetable/' + roomId(r)), {room: r, slots: slots});
+          });
+          if (upd) Object.keys(codes).forEach(function (e) { batch.set(db.doc('p_teacherInfo/' + e), {codes: Object.keys(codes[e]).sort().slice(0, 15)}, {merge: true}); });
+          loading(true); batch.commit().then(function () {
+            rooms.forEach(function (r) { delete cache['tt_' + r]; }); cache.ttAll = null; loading(false);
+            toast('นำเข้าตาราง ' + rooms.length + ' ห้อง' + (upd ? ' · รหัสวิชาครู ' + tcount + ' คน' : '') + ' ✓'); timetable();
+          }).catch(fail);
+        };
+      });
     }).catch(fail);
   }
   // ---- ห้องเรียน ----
