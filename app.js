@@ -169,6 +169,8 @@ var WPPData = (function () {
   firebase.initializeApp(cfg.FIREBASE);
   var auth = firebase.auth(), db = firebase.firestore(), FV = firebase.firestore.FieldValue;
   var STATUSES = ['มา', 'สาย', 'ขาด', 'ลากิจ', 'ลาป่วย', 'กิจกรรม', 'พักการเรียน'];
+  // สถานะนักเรียนที่ไม่ต้องเช็คชื่อ (ตั้งในหน้าบันทึกเวลาเรียน → ผู้ดูแลระบบ → นักเรียน) — ทะเบียนเดียวกันทั้ง 2 ระบบ
+  var WPP_LOCK = ['ขาดเรียนนาน', 'พักการเรียน', 'ลาออก', 'ไม่มีตัวตน'];
   var me = null, rosterCache = null, metaCache = null;
 
   function setUser(u) { me = u; rosterCache = null; metaCache = null; }
@@ -183,7 +185,7 @@ var WPPData = (function () {
   function roster() {
     if (rosterCache) return Promise.resolve(rosterCache);
     return db.doc('roster/all').get().then(function (s) {
-      rosterCache = (s.exists && s.data().students || []).map(function (r) { return {no: wppStatsText_(r.no), name: wppStatsText_(r.name), room: wppStatsText_(r.room)}; });
+      rosterCache = (s.exists && s.data().students || []).map(function (r) { return {no: wppStatsText_(r.no), name: wppStatsText_(r.name), status: r.status || '', room: wppStatsText_(r.room)}; });
       return rosterCache;
     });
   }
@@ -219,10 +221,11 @@ var WPPData = (function () {
     },
     getLogoBase64: function () { return Promise.reject(new Error('ใช้ไฟล์ logo.png แทน')); },
 
-    getStudentList: function (classroom) {
+    // all = true → รวมนักเรียนสถานะ ลาออก/พักการเรียน/ขาดเรียนนาน/ไม่มีตัวตน (ใช้ในหน้าจัดการรายชื่อ) · ปกติไม่แสดงในหน้าเช็คชื่อ
+    getStudentList: function (classroom, all) {
       var room = wppStatsText_(classroom);
       return roster().then(function (list) {
-        return list.filter(function (r) { return r.room === room; }).map(function (r) { return [r.no, r.name, r.room]; });
+        return list.filter(function (r) { return r.room === room && (all || WPP_LOCK.indexOf(r.status) < 0); }).map(function (r) { return [r.no, r.name, r.room]; });
       });
     },
     saveStudentList: function (data) {
@@ -243,7 +246,7 @@ var WPPData = (function () {
       return editRoster(function (list) {
         for (var i = 0; i < list.length; i++) {
           if (wppStatsText_(list[i].name) === String(oldName) && wppStatsText_(list[i].room) === String(classroom)) {
-            list[i] = {no: wppStatsText_(no), name: wppStatsText_(newName), room: wppStatsText_(classroom)};
+            list[i] = Object.assign({}, list[i], {no: wppStatsText_(no), name: wppStatsText_(newName), room: wppStatsText_(classroom)}); // คงเลขประจำตัว/สถานะไว้
             return true;
           }
         }

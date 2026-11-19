@@ -129,6 +129,11 @@ tbody tr:nth-child(even) td{background:#f8fbfe}
  #printArea .pill{-webkit-print-color-adjust:exact;print-color-adjust:exact}
  #printArea .sig{text-align:right;margin-top:26px;line-height:2}
 }
+.hr-traits{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0 10px}
+.hr-tr{display:flex;align-items:center;gap:8px;min-height:42px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:#fbfdff;font-size:14px;font-weight:400;margin:0;cursor:pointer}
+.hr-tr input{width:20px;height:20px;min-height:0;flex:0 0 auto}.hr-tr:has(input:checked){background:#eaf6ff;border-color:#9cc9ef}
+.hr-pics{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px}.hr-pic{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#eef2f6;display:block}
+.hr-pic img{width:100%;height:100%;object-fit:cover}.hr-pic span{position:absolute;left:0;right:0;bottom:0;background:#0008;color:#fff;font-size:11px;padding:1px 5px}
 </style>
 </head>
 <body>
@@ -180,5 +185,8 @@ tbody tr:nth-child(even) td{background:#f8fbfe}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="period.js"></script>
+<script src="risk.js"></script>
+<script src="teach-hr.js"></script>
+<script src="holidays.js"></script>
 </body>
 </html>

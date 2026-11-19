@@ -241,7 +241,7 @@ var Book = {
       kids.push(P(R('สังกัดสำนักงานเขตพื้นที่การศึกษามัธยมศึกษาพิษณุโลก อุตรดิตถ์', {size: 36}), {alignment: C}));
       kids.push(P(R('สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน  กระทรวงศึกษาธิการ', {size: 36}), {alignment: C}));
       // บันทึกข้อความ
-      kids.push(P(new D.ImageRun({data: krut, transformation: {width: 58, height: 64}}), {pageBreakBefore: true, alignment: C}));
+      kids.push(P(new D.ImageRun({data: krut, transformation: {width: 58, height: 64}}), {pageBreakBefore: true, alignment: C, spacing: {after: 0}}));
       kids.push(P(R('บันทึกข้อความ', {bold: true, size: 58}), {alignment: C, spacing: {after: 120}}));
       kids.push(P([R('ส่วนราชการ', {bold: true, size: 36}), '  ' + SCHOOL + '  อำเภอเนินมะปราง  จังหวัดพิษณุโลก']));
       kids.push(P([R('ที่', {bold: true, size: 36}), ' ............../' + d.year + '\t\t\t\t', R('วันที่', {bold: true, size: 36}), '  ........................................................']));

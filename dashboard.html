@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>แดชบอร์ดผู้บริหาร · WPP</title>
+<meta name="theme-color" content="#3d4fd6">
+<link rel="icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&amp;family=Sarabun:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{--ink:#22314d;--muted:#6c7b93;--line:#e2e8f2;--bg:#f3f5fb;--card:#fff;--a:#3d4fd6;--ok:#16996a;--warn:#d98a07;--bad:#d63c5e;--c1:#0ca7e4;--c2:#d6488f;--c3:#13a06f;--c4:#e08a00}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Sarabun',sans-serif;font-size:15px}
+button,input,select{font:inherit;color:inherit}h1,h2,h3,.btn,label,th,.k b,.tag{font-family:'Prompt','Sarabun',sans-serif}[hidden]{display:none!important}
+.top{position:sticky;top:0;z-index:20;background:#fffffff2;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1180px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px}
+.top img{width:36px;height:36px;object-fit:contain}.top h1{font-size:16px;margin:0;line-height:1.25}.top small{display:block;color:var(--muted);font-size:11.5px;font-family:'Sarabun';font-weight:400}
+.who{margin-left:auto;text-align:right;font-size:12px;color:var(--muted);line-height:1.4}.who a,.who button{background:none;border:0;color:var(--a);padding:0;cursor:pointer;font-size:12px;text-decoration:underline}
+main{max-width:1180px;margin:0 auto;padding:14px 16px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px #1f2a5a0a}
+.card h2{font-size:16px;margin:0 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.muted{color:var(--muted);font-size:13px}label{display:block;font-size:12.5px;font-weight:500;color:#4f607a;margin:0 0 4px}
+input,select{min-height:42px;border:1px solid #d5ddeb;border-radius:11px;background:#f9fbfe;padding:8px 11px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:8px 14px;border-radius:12px;border:1px solid #d7ddf5;background:#eef1fd;color:#2f3db0;font-size:14px;font-weight:500;cursor:pointer}
+.btn.pri{background:linear-gradient(110deg,#3d4fd6,#c4318a);color:#fff;border:0}.btn.sm{min-height:32px;padding:4px 10px;font-size:12.5px;border-radius:9px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.note{border-radius:12px;padding:10px 12px;font-size:13.5px;margin:0 0 12px;line-height:1.5}.note.info{background:#eef3ff;border:1px solid #d1dcfb;color:#2a3f8a}.note.err{background:#fff0f3;border:1px solid #f6c9d5;color:#a3213f}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px}
+.k{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 16px;position:relative;overflow:hidden}
+.k::before{content:'';position:absolute;inset:0 auto 0 0;width:5px;background:var(--c)}
+.k .ic{font-size:22px}.k b{display:block;font-size:30px;font-weight:700;line-height:1.1;margin-top:4px;color:var(--c)}.k span{font-size:13px;color:var(--muted)}
+.bar{height:8px;border-radius:9px;background:#edf1f8;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--c);border-radius:9px}
+.chart{display:flex;align-items:flex-end;gap:8px;height:170px;padding:8px 2px 0}
+.col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}.col .v{font-size:11.5px;font-family:'Prompt';color:#3a4870}
+.col .b{width:100%;max-width:46px;border-radius:9px 9px 4px 4px;background:linear-gradient(180deg,#5d6df0,#3d4fd6)}.col .b.low{background:linear-gradient(180deg,#f1789a,#d63c5e)}
+.col .d{font-size:11px;color:var(--muted);white-space:nowrap}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:14px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}th{background:#3d4fd6;color:#fff;font-weight:500;font-size:12.5px;padding:8px 6px;white-space:nowrap}
+td{border-bottom:1px solid #eef2f8;padding:8px 6px;text-align:center;vertical-align:top}td:first-child,th:first-child{text-align:left;padding-left:10px}td.l{text-align:left}
+tr:nth-child(even) td{background:#fafbff}.y{color:var(--ok);font-weight:600}.n{color:#c3cbd8}.r{color:var(--bad);font-weight:600}.w{color:var(--warn);font-weight:600}
+.tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:500;background:#eef1fd;color:#2f3db0;margin:1px}
+.tag.bad{background:#fde8ee;color:var(--bad)}.tag.warn{background:#fff3dc;color:#9a5d00}.tag.ok{background:#e4f6ee;color:var(--ok)}
+.abs{font-size:12.5px;color:#5a6680;line-height:1.5}
+.login{max-width:420px;margin:8vh auto;padding:0 16px}.login .card{padding:22px}.login h1{text-align:center;font-size:21px;margin:8px 0 2px;color:#2f3db0}
+.stack>*+*{margin-top:10px}.stack input{width:100%}
+.loading{position:fixed;inset:0;z-index:60;background:#ffffffb0;display:flex;align-items:center;justify-content:center;font-family:'Prompt';color:#2f3db0}
+.toast{position:fixed;left:16px;right:16px;top:12px;z-index:70;max-width:520px;margin:auto;box-shadow:0 6px 20px #0002}
+@media print{.top,.noprint{display:none!important}body{background:#fff}.card,.k{box-shadow:none;break-inside:avoid}}
+</style>
+</head>
+<body>
+<header class="top" id="top" hidden><div class="top-in">
+ <a href="index.html"><img src="logo.png" alt="หน้าหลัก" onerror="this.style.display='none'"></a>
+ <div><h1>📊 แดชบอร์ดผู้บริหาร</h1><small>โรงเรียนวังโพรงพิทยาคม · ภาพรวมการมาเรียนรายวัน</small></div>
+ <div class="who"><span id="whoName"></span><br><a href="index.html">🏠 หน้าหลัก</a> · <button id="logoutBtn">ออกจากระบบ</button></div>
+</div></header>
+
+<section class="login" id="loginView" hidden><div class="card">
+ <div style="text-align:center"><img src="logo.png" alt="" width="72" height="72" onerror="this.style.display='none'"></div>
+ <h1>แดชบอร์ดผู้บริหาร</h1><p class="muted" style="text-align:center;margin:0 0 14px">สำหรับครูและผู้บริหาร (บัญชีเดียวกับระบบเช็คชื่อ)</p>
+ <div class="stack"><button class="btn pri" id="gLogin" style="width:100%">เข้าสู่ระบบด้วย Google</button>
+ <form id="tForm" class="stack"><div><label for="tEmail">อีเมล</label><input id="tEmail" type="email" autocomplete="username" required></div>
+ <div><label for="tPw">รหัสผ่าน</label><input id="tPw" type="password" autocomplete="current-password" required></div><button class="btn" style="width:100%">เข้าสู่ระบบด้วยอีเมล</button></form></div>
+ <div class="note err" id="loginMsg" hidden style="margin-top:10px"></div>
+</div></section>
+
+<main id="app" hidden>
+ <div class="card noprint"><div class="row">
+  <div><label for="dDate">วันที่</label><input type="date" id="dDate"></div>
+  <button class="btn" id="dPrev" type="button">◀ วันก่อน</button><button class="btn" id="dNext" type="button">วันถัดไป ▶</button>
+  <button class="btn" id="dToday" type="button">วันนี้</button>
+  <span style="flex:1"></span>
+  <button class="btn" id="dCopy" type="button">📋 คัดลอกสรุป (วางใน LINE)</button><button class="btn" type="button" onclick="print()">🖨️ พิมพ์</button>
+ </div></div>
+ <div id="dHol"></div>
+ <div class="kpis" id="kpis"></div>
+ <div class="card"><h2>📈 การมาเข้าแถว 10 วันเรียนล่าสุด <span class="muted" style="font-weight:400">(มา + สาย ÷ ทั้งหมด)</span></h2><div class="chart" id="chart"></div></div>
+ <div class="card"><h2>🏫 รายห้องเรียน <span class="muted" style="font-weight:400" id="tblNote"></span></h2><div class="tbl" id="tbl"></div>
+  <p class="muted" style="margin:8px 0 0">เข้าแถว = มา+สาย/ทั้งหมด · คาบ = บันทึกแล้ว/ตามตาราง (⏳ = หัวหน้าห้องบันทึก รอครูยืนยัน) · ✓ งานที่ส่งรูปแล้ว: 🏠 โฮมรูม 🌳 เขตพื้นที่ 🚻 ห้องน้ำ 🏫 ห้องเรียน</p></div>
+ <div class="card"><h2>🎯 นักเรียนกลุ่มเสี่ยง (ทั้งภาคเรียน)</h2><p class="muted" style="margin:0 0 8px">คำนวณจากการบันทึกรายคาบตั้งแต่เปิดภาคเรียน (ขาด + โดด) · ใช้การอ่านข้อมูลมากกว่าส่วนอื่น จึงกดเมื่อต้องการ</p>
+  <button class="btn pri" type="button" id="rBtn">คำนวณกลุ่มเสี่ยง</button><div id="rOut" style="margin-top:10px"></div></div>
+ <p class="muted" style="text-align:center;font-size:12px">ดูรายละเอียด/บันทึกการช่วยเหลือ: บันทึกเวลาเรียน → 📊 สถิติ · ข้อมูลอ่านอย่างเดียว ไม่มีการแก้ไขจากหน้านี้</p>
+</main>
+<div class="loading" id="loading" hidden>กำลังโหลด…</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script>
+/* WPP — แดชบอร์ดผู้บริหาร (อ่านอย่างเดียว) */
+var CFG = window.WPP_CONFIG || {}, TZ = 'Asia/Bangkok';
+var LOCK = ['ขาดเรียนนาน', 'พักการเรียน', 'ลาออก', 'ไม่มีตัวตน'], ABSENT = ['ขาด', 'โดด'];
+var EVAL = [{min: 90, label: 'ปกติ'}, {min: 85, label: 'เสี่ยง', cls: 'warn'}, {min: 80, label: 'ติดต่อครูผู้สอน', cls: 'warn'}, {min: -1, label: 'หมดสิทธิ์สอบ (มส.)', cls: 'bad'}];
+var DEFAULT_ROOMS = ['ม.1/1', 'ม.1/2', 'ม.2/1', 'ม.2/2', 'ม.3/1', 'ม.3/2', 'ม.4/1', 'ม.4/2', 'ม.5/1', 'ม.5/2', 'ม.6/1', 'ม.6/2'];
+var TH_M = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'], TH_D = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+firebase.initializeApp(CFG.FIREBASE);
+var auth = firebase.auth(), db = firebase.firestore(), me = null, D = null, R = {};
+function $(id) { return document.getElementById(id); }
+function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
+function today() { var p = {}; new Intl.DateTimeFormat('en-GB', {timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit'}).formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; }); return p.year + '-' + p.month + '-' + p.day; }
+function addDays(d, n) { var x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }
+function dow(d) { return new Date(d + 'T00:00:00Z').getUTCDay(); }
+function thDate(d) { var a = d.split('-'); return 'วัน' + TH_D[dow(d)] + 'ที่ ' + (+a[2]) + ' ' + TH_M[+a[1] - 1] + ' ' + (+a[0] + 543); }
+function shortD(d) { var a = d.split('-'); return (+a[2]) + ' ' + TH_M[+a[1] - 1]; }
+function roomId(r) { return String(r).trim().replace(/[\/\s]+/g, '-'); }
+function cmpTh(a, b) { return String(a).localeCompare(String(b), 'th', {numeric: true}); }
+function pct(a, b) { return b ? Math.round(a * 1000 / b) / 10 : null; }
+function loading(on, t) { $('loading').hidden = !on; if (t) $('loading').textContent = t; }
+function toast(t, kind) { var n = document.createElement('div'); n.className = 'note toast ' + (kind || 'info'); n.textContent = t; document.body.appendChild(n); setTimeout(function () { n.remove(); }, 3000); }
+function fail(e) { loading(false); console.error(e); toast(e && e.code === 'permission-denied' ? 'ไม่มีสิทธิ์อ่านข้อมูล' : (e && e.message) || String(e), 'err'); }
+function docs(q) { return q.get().then(function (s) { var a = []; s.forEach(function (d) { a.push(d.data()); }); return a; }); }
+function termStart(day) {
+  var t = R.term || {}; if (t.nextFrom && t.nextFrom <= day && t.current !== t.next) return t.nextFrom;
+  var y = +day.slice(0, 4), m = +day.slice(5, 7);
+  return m >= 11 ? y + '-11-01' : m >= 5 ? y + '-05-01' : (y - 1) + '-11-01';
+}
+
+// ---------- เข้าสู่ระบบ (ครู/ผู้บริหาร) ----------
+function msg(t) { $('loginMsg').hidden = !t; $('loginMsg').textContent = t || ''; }
+$('gLogin').onclick = function () { var p = new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({prompt: 'select_account'}); auth.signInWithPopup(p).catch(function (e) { msg(e.message || e); }); };
+$('tForm').onsubmit = function (ev) { ev.preventDefault(); msg(''); auth.signInWithEmailAndPassword($('tEmail').value.trim(), $('tPw').value).catch(function () { msg('อีเมลหรือรหัสผ่านไม่ถูกต้อง'); }); };
+$('logoutBtn').onclick = function () { auth.signOut(); };
+auth.onAuthStateChanged(function (u) {
+  if (!u) { $('top').hidden = $('app').hidden = true; $('loginView').hidden = false; return; }
+  var email = String(u.email || '').toLowerCase();
+  loading(true, 'กำลังตรวจสิทธิ์…');
+  db.doc('teachers/' + email).get().then(function (s) {
+    if (!s.exists || s.data().active === false) throw new Error('อีเมล ' + email + ' ยังไม่ได้รับสิทธิ์ใช้งาน');
+    me = {email: email, name: s.data().name || email};
+    return Promise.all([
+      db.doc('p_settings/rooms').get().then(function (x) { R.rooms = x.exists && (x.data().list || []).length ? x.data().list : DEFAULT_ROOMS; }).catch(function () { R.rooms = DEFAULT_ROOMS; }),
+      db.doc('roster/all').get().then(function (x) { R.roster = x.exists ? x.data().students || [] : []; }),
+      db.collection('p_timetable').get().then(function (q) { R.tt = {}; q.forEach(function (d) { R.tt[d.data().room || d.id] = d.data().slots || {}; }); }).catch(function () { R.tt = {}; }),
+      db.doc('p_settings/holidays').get().then(function (x) { R.hol = x.exists ? x.data().days || {} : {}; }).catch(function () { R.hol = {}; }),
+      db.doc('settings/term').get().then(function (x) { R.term = x.exists ? x.data() : {}; }).catch(function () { R.term = {}; })
+    ]);
+  }).then(function () {
+    loading(false); $('loginView').hidden = true; $('top').hidden = $('app').hidden = false; $('whoName').textContent = me.name;
+    D = today(); $('dDate').value = D; load();
+  }).catch(function (e) { loading(false); auth.signOut(); $('loginView').hidden = false; msg(e.message || String(e)); });
+});
+$('dDate').onchange = function () { D = this.value || today(); load(); };
+$('dPrev').onclick = function () { D = addDays(D, -1); while (dow(D) === 0 || dow(D) === 6) D = addDays(D, -1); $('dDate').value = D; load(); };
+$('dNext').onclick = function () { D = addDays(D, 1); while (dow(D) === 0 || dow(D) === 6) D = addDays(D, 1); $('dDate').value = D; load(); };
+$('dToday').onclick = function () { D = today(); $('dDate').value = D; load(); };
+
+// ---------- โหลดข้อมูลวันที่เลือก ----------
+var V = null;
+function load() {
+  loading(true);
+  var from = addDays(D, -20);
+  Promise.all([
+    docs(db.collection('attendance').where('date', '==', D)),
+    docs(db.collection('p_class').where('date', '==', D)),
+    docs(db.collection('p_area').where('date', '==', D)),
+    docs(db.collection('attendance').where('date', '>=', from).where('date', '<=', D)).catch(function () { return []; })
+  ]).then(function (v) { loading(false); V = {lineup: v[0], logs: v[1], area: v[2], trend: v[3]}; render(); }).catch(fail);
+}
+function rosterCount(room) { return R.roster.filter(function (s) { return String(s.room).trim() === room && LOCK.indexOf(s.status) < 0; }).length; }
+function render() {
+  var hol = R.hol[D] || '', d = dow(D), weekend = d === 0 || d === 6;
+  $('dHol').innerHTML = hol ? '<div class="note info">📅 <b>' + esc(hol) + '</b> — วันหยุด/งดเรียน</div>' : weekend ? '<div class="note info">วัน' + TH_D[d] + ' — ไม่มีการเรียนการสอน</div>' : '';
+  var rooms = R.rooms, per = {}, T = {come: 0, total: 0, checked: 0, logged: 0, expected: 0, pend: 0, absPeople: {}, absSlots: 0, area: 0, hr: 0};
+  rooms.forEach(function (r) { per[r] = {come: 0, total: 0, lineup: false, logged: 0, expected: 0, pend: 0, abs: {}, area: {}}; });
+  V.lineup.forEach(function (a) {
+    if (a.period !== 'เช้า' || !per[a.room]) return; var p = per[a.room]; p.lineup = true;
+    (a.records || []).forEach(function (r) { if (LOCK.indexOf(r.status) >= 0 || r.status === 'พักการเรียน') return; p.total++; if (r.status === 'มา' || r.status === 'สาย') p.come++; });
+  });
+  var seen = {};
+  V.logs.forEach(function (l) {
+    var p = per[l.room]; if (!p) return;
+    var k = l.room + '|' + l.period; if (!seen[k]) { seen[k] = 1; p.logged++; if (l.confirmed === false) p.pend++; }
+    (l.records || []).forEach(function (r) { if (ABSENT.indexOf(r.status) < 0) return; var key = r.no + '. ' + r.name; (p.abs[key] = p.abs[key] || []).push(l.period === 'HR' ? 'HR' : 'ค.' + l.period); });
+  });
+  rooms.forEach(function (r) {
+    var tt = R.tt[r] || {}, p = per[r];
+    if (!hol && !weekend) Object.keys(tt).forEach(function (k) { if (+k.split('-')[0] === d) p.expected++; });
+    if (p.expected < p.logged) p.expected = p.logged;
+  });
+  V.area.forEach(function (a) { var p = per[a.room]; if (!p) return; var ph = a.photos || {}; ['area', 'toilet', 'room', 'hr'].forEach(function (k) { if ((ph[k] || []).length) p.area[k] = 1; }); if (a.hr && (a.hr.topics || []).length) p.area.hr = 1; });
+  rooms.forEach(function (r) {
+    var p = per[r]; T.come += p.come; T.total += p.total; if (p.lineup) T.checked++; T.logged += p.logged; T.expected += p.expected; T.pend += p.pend;
+    Object.keys(p.abs).forEach(function (k) { T.absPeople[r + k] = 1; T.absSlots += p.abs[k].length; });
+    if (p.area.area || p.area.room || p.area.toilet) T.area++; if (p.area.hr) T.hr++;
+  });
+  V.T = T; V.per = per;
+  var lp = pct(T.come, T.total), cp = pct(T.logged, T.expected), N = rooms.length;
+  var k = function (c, ic, val, label, sub, bar) { return '<div class="k" style="--c:' + c + '"><div class="ic">' + ic + '</div><b>' + val + '</b><span>' + label + '</span>' + (sub ? '<div class="muted" style="margin-top:2px;font-size:12px">' + sub + '</div>' : '') + (bar != null ? '<div class="bar"><i style="width:' + Math.min(100, bar) + '%"></i></div>' : '') + '</div>'; };
+  $('kpis').innerHTML =
+    k('var(--c1)', '🌅', lp == null ? '—' : lp + '%', 'มาเข้าแถวตอนเช้า', T.come + '/' + T.total + ' คน · เช็คแล้ว ' + T.checked + '/' + N + ' ห้อง', lp) +
+    k('var(--c2)', '📚', cp == null ? '—' : cp + '%', 'ครูบันทึกเวลาเรียนรายคาบ', T.logged + '/' + T.expected + ' คาบ' + (T.pend ? ' · ⏳ รอยืนยัน ' + T.pend : ''), cp) +
+    k('var(--bad)', '🚫', Object.keys(T.absPeople).length, 'นักเรียนขาด/โดดเรียนวันนี้', 'รวม ' + T.absSlots + ' คน-คาบ', null) +
+    k('var(--c3)', '🧹', T.area + '/' + N, 'ห้องส่งงานเขตพื้นที่', 'โฮมรูมบันทึกแล้ว ' + T.hr + '/' + N + ' ห้อง', pct(T.area, N));
+  // กราฟแนวโน้ม
+  var byDay = {};
+  V.trend.forEach(function (a) { if (a.period !== 'เช้า') return; var x = byDay[a.date] = byDay[a.date] || {c: 0, t: 0}; (a.records || []).forEach(function (r) { if (LOCK.indexOf(r.status) >= 0 || r.status === 'พักการเรียน') return; x.t++; if (r.status === 'มา' || r.status === 'สาย') x.c++; }); });
+  var days = Object.keys(byDay).filter(function (x) { return byDay[x].t; }).sort().slice(-10);
+  $('chart').innerHTML = days.length ? days.map(function (x) { var v = pct(byDay[x].c, byDay[x].t); return '<div class="col" title="' + thDate(x) + '"><span class="v">' + v + '%</span><div class="b' + (v < 90 ? ' low' : '') + '" style="height:' + Math.max(4, (v - 50) * 2.4) + 'px"></div><span class="d">' + shortD(x) + '</span></div>'; }).join('') : '<p class="muted">ยังไม่มีข้อมูลการเข้าแถวในช่วงนี้</p>';
+  // ตารางรายห้อง
+  var tick = function (on) { return on ? '<span class="y">✓</span>' : '<span class="n">·</span>'; };
+  $('tbl').innerHTML = '<table><thead><tr><th>ห้อง</th><th>เข้าแถว</th><th>คาบที่บันทึก</th><th>🏠</th><th>🌳</th><th>🚻</th><th>🏫</th><th style="text-align:left">ขาด/โดดวันนี้</th></tr></thead><tbody>' +
+    rooms.map(function (r) {
+      var p = per[r], lpv = p.lineup ? pct(p.come, p.total) : null, abs = Object.keys(p.abs);
+      return '<tr><td><b>' + esc(r) + '</b><div class="muted" style="font-size:11.5px">' + rosterCount(r) + ' คน</div></td>' +
+        '<td>' + (p.lineup ? '<span class="' + (lpv >= 90 ? 'y' : lpv >= 80 ? 'w' : 'r') + '">' + lpv + '%</span><div class="muted" style="font-size:11.5px">' + p.come + '/' + p.total + '</div>' : '<span class="n">ยังไม่เช็ค</span>') + '</td>' +
+        '<td>' + (p.expected ? '<span class="' + (p.logged >= p.expected ? 'y' : p.logged ? 'w' : 'r') + '">' + p.logged + '/' + p.expected + '</span>' + (p.pend ? '<div style="font-size:11.5px">⏳ ' + p.pend + '</div>' : '') : '<span class="n">–</span>') + '</td>' +
+        '<td>' + tick(p.area.hr) + '</td><td>' + tick(p.area.area) + '</td><td>' + tick(p.area.toilet) + '</td><td>' + tick(p.area.room) + '</td>' +
+        '<td class="l abs">' + (abs.length ? abs.map(function (n) { return esc(n) + ' <span class="tag bad">' + p.abs[n].join(', ') + '</span>'; }).join('<br>') : '<span class="n">—</span>') + '</td></tr>';
+    }).join('') + '</tbody></table>';
+  $('tblNote').textContent = thDate(D);
+}
+
+// ---------- กลุ่มเสี่ยงทั้งภาคเรียน ----------
+$('rBtn').onclick = function () {
+  var from = termStart(D); loading(true, 'กำลังคำนวณ…');
+  docs(db.collection('p_class').where('date', '>=', from).where('date', '<=', D)).then(function (logs) {
+    loading(false);
+    var g = {};
+    logs.forEach(function (l) { (l.records || []).forEach(function (r) {
+      if (LOCK.indexOf(r.status) >= 0) return; var k = l.room + '|' + r.no + '|' + r.name + '|' + l.code;
+      var x = g[k] = g[k] || {room: l.room, no: r.no, name: r.name, code: l.code || '-', n: 0, a: 0}; x.n++; if (ABSENT.indexOf(r.status) >= 0) x.a++; }); });
+    var list = Object.keys(g).map(function (k) { var x = g[k]; x.att = 100 - x.a * 100 / x.n; x.ev = EVAL.filter(function (e) { return x.att >= e.min; })[0]; return x; })
+      .filter(function (x) { return x.n >= 4 && x.ev.label !== 'ปกติ'; }).sort(function (a, b) { return a.att - b.att; });
+    var cnt = {}, ppl = {}; list.forEach(function (x) { cnt[x.ev.label] = (cnt[x.ev.label] || 0) + 1; ppl[x.room + x.no + x.name] = 1; });
+    V.risk = {list: list, cnt: cnt, ppl: Object.keys(ppl).length, from: from};
+    $('rOut').innerHTML = '<p class="muted" style="margin:0 0 8px">ข้อมูล ' + thDate(from) + ' – ' + thDate(D) + ' · ' + logs.length + ' บันทึก</p>' +
+      '<div style="margin-bottom:8px">' + EVAL.slice(1).map(function (e) { return '<span class="tag ' + e.cls + '">' + e.label + ' ' + (cnt[e.label] || 0) + '</span>'; }).join(' ') + ' <span class="tag">รวม ' + V.risk.ppl + ' คน</span></div>' +
+      (list.length ? '<div class="tbl"><table><thead><tr><th>ห้อง</th><th>ชื่อ</th><th>รหัสวิชา</th><th>ขาด/คาบ</th><th>มาเรียน</th><th>ผล</th></tr></thead><tbody>' + list.slice(0, 50).map(function (x) {
+        return '<tr><td>' + esc(x.room) + '</td><td class="l">' + esc(x.no + '. ' + x.name) + '</td><td>' + esc(x.code) + '</td><td>' + x.a + '/' + x.n + '</td><td>' + x.att.toFixed(1) + '%</td><td><span class="tag ' + x.ev.cls + '">' + x.ev.label + '</span></td></tr>';
+      }).join('') + '</tbody></table></div>' + (list.length > 50 ? '<p class="muted">แสดง 50 รายการแรกจาก ' + list.length + '</p>' : '') : '<div class="note info">✅ ไม่มีนักเรียนกลุ่มเสี่ยง</div>');
+  }).catch(fail);
+};
+
+// ---------- คัดลอกสรุป (สำหรับวางใน LINE) ----------
+$('dCopy').onclick = function () {
+  if (!V || !V.T) return;
+  var T = V.T, N = R.rooms.length, hol = R.hol[D];
+  var lines = ['📊 สรุปการมาเรียน ' + thDate(D), hol ? '📅 ' + hol : '',
+    '🌅 เข้าแถว: ' + (T.total ? pct(T.come, T.total) + '% (' + T.come + '/' + T.total + ' คน)' : '—') + ' · เช็คแล้ว ' + T.checked + '/' + N + ' ห้อง',
+    '📚 บันทึกรายคาบ: ' + T.logged + '/' + T.expected + ' คาบ' + (T.pend ? ' (รอครูยืนยัน ' + T.pend + ')' : ''),
+    '🧹 งานเขตพื้นที่: ' + T.area + '/' + N + ' ห้อง · 🏠 โฮมรูม ' + T.hr + '/' + N + ' ห้อง',
+    '🚫 ขาด/โดดเรียน: ' + Object.keys(T.absPeople).length + ' คน (' + T.absSlots + ' คน-คาบ)'];
+  R.rooms.forEach(function (r) { var a = V.per[r].abs, ks = Object.keys(a); if (ks.length) lines.push('▪️ ' + r + ': ' + ks.map(function (k) { return k.replace(/^\d+\.\s*/, '') + ' (' + a[k].join(',') + ')'; }).join(', ')); });
+  var miss = R.rooms.filter(function (r) { return !V.per[r].lineup; }); if (miss.length && !hol) lines.push('⚠️ ยังไม่เช็คเข้าแถว: ' + miss.join(', '));
+  if (V.risk) lines.push('🎯 กลุ่มเสี่ยงทั้งเทอม: ' + V.risk.ppl + ' คน · มส. ' + (V.risk.cnt['หมดสิทธิ์สอบ (มส.)'] || 0) + ' รายการ');
+  var text = lines.filter(Boolean).join('\n');
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { toast('คัดลอกแล้ว ✓ วางในกลุ่ม LINE ได้เลย'); }).catch(function () { window.prompt('คัดลอกข้อความนี้', text); });
+  window.__lastCopy = text;
+};
+</script>
+</body>
+</html>

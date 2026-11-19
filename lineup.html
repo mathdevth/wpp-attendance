@@ -228,7 +228,7 @@ function submitStudentList(){
 }
 function loadEditableStudentList(){
  const room=document.getElementById('uploadClassroom').value,version=++editVersion;showLoading('กำลังโหลดรายชื่อ…');
- google.script.run.withFailureHandler(e=>{if(version===editVersion)onFailure(e);}).withSuccessHandler(rows=>{if(version===editVersion){renderEditableTable(rows);}}).getStudentList(room);
+ google.script.run.withFailureHandler(e=>{if(version===editVersion)onFailure(e);}).withSuccessHandler(rows=>{if(version===editVersion){renderEditableTable(rows);}}).getStudentList(room,true);
 }
 function renderEditableTable(students){
  editableStudents=sorted(students);

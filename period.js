@@ -151,14 +151,14 @@ function syncStudents(force) {
     var last = v[1].exists ? v[1].data().rosterAt || 0 : -1;
     if (!force && at && last >= at) return;
     var rooms = {};
-    (r.students || []).forEach(function (s) { var room = String(s.room || '').trim(); if (!room || !s.name) return; (rooms[room] = rooms[room] || []).push({no: String(s.no || '').trim(), name: String(s.name).trim()}); });
+    (r.students || []).forEach(function (s) { var room = String(s.room || '').trim(); if (!room || !s.name) return; (rooms[room] = rooms[room] || []).push({no: String(s.no || '').trim(), name: String(s.name).trim(), sid: s.sid || '', status: s.status || ''}); });
     return Promise.all(Object.keys(rooms).map(function (room) { return db.doc('p_students/' + roomId(room)).get(); })).then(function (snaps) {
       var batch = db.batch();
       Object.keys(rooms).forEach(function (room, i) {
         var old = snaps[i].exists ? snaps[i].data().students || [] : [], byKey = {}, byName = {};
         old.forEach(function (o) { byKey[skey(o)] = o; byName[o.name] = o; });
-        var list = rooms[room].map(function (s) { var o = byKey[skey(s)] || byName[s.name] || {}; var x = {no: s.no, name: s.name, sid: o.sid || '', status: o.status || 'ปกติ'}; if (o.hidden) x.hidden = true; return x; });
-        old.forEach(function (o) { if (o.extra && !list.some(function (x) { return skey(x) === skey(o); })) list.push(o); }); // นักเรียนที่แอดมินเพิ่มเองในส่วนนี้
+        var list = rooms[room].map(function (s) { var o = byKey[skey(s)] || byName[s.name] || {}; var x = {no: s.no, name: s.name, sid: s.sid || o.sid || '', status: s.status || o.status || 'ปกติ'}; return x; }); // อยู่ในทะเบียน = แสดง
+        old.forEach(function (o) { if (o.hidden && !list.some(function (x) { return skey(x) === skey(o); })) list.push(o); }); // ชื่อที่ลบไว้ (กู้คืนได้)
         list.sort(byNo);
         batch.set(db.doc('p_students/' + roomId(room)), {room: room, students: list, syncedAt: FV.serverTimestamp()});
       });
@@ -424,15 +424,17 @@ var Teach = (function () {
       else if (!st.warnDismissed) warn = '<div class="note warn" id="tWarn">⚠️ <b>หัวหน้าห้อง' + (st.mode === 'group' ? 'บางห้อง' : '') + 'ยังไม่ได้เช็คชื่อวันนี้</b> กรุณาแจ้งหัวหน้าห้อง<br>' + (src === 'lineup' || src === 'mixed' ? 'ระหว่างนี้ใช้ข้อมูลเข้าแถวเช้าเป็นค่าเริ่มต้น' : 'ระหว่างนี้ตั้งทุกคนเป็น "มา" ไว้ก่อน') + ' ครูปรับแก้และบันทึกเองได้เลย<div style="margin-top:8px"><button class="btn sm" type="button" onclick="Teach.dismiss()">รับทราบ ปิดแจ้งเตือน</button></div></div>';
       var w = log && log.work || {};
       var need = !code && (first === '9' || first === '10' || !slot.code);
+      var hrMode = typeof TeachHR !== 'undefined' && st.mode === 'room' && !st.extra.length && st.sel.length === 1 && st.sel[0] === 'HR';
       $('tBody').innerHTML =
         '<div class="card"><h2>' + esc(title) + ' · ' + st.sel.map(pLabel).join(' + ') + '</h2>' + warn +
         '<div class="grid"><div><label for="tCode">รหัสวิชา' + (need ? ' <span style="color:var(--bad)">*กรอกเอง</span>' : '') + '</label><input id="tCode" list="subjList" value="' + esc(code) + '" placeholder="เช่น ค21101"></div>' +
         '<div><label for="tSubj">ชื่อวิชา</label><input id="tSubj" value="' + esc(name) + '"></div>' +
         '<div><label for="tCo">ผู้สอนร่วม / ผู้สอนแทน</label><input id="tCo" value="' + esc(log ? log.coTeacher || '' : '') + '" placeholder="ถ้ามี"></div></div>' +
         '<datalist id="subjList">' + Object.keys(subjects).sort().map(function (c) { return '<option value="' + esc(c) + '">' + esc(subjects[c]) + '</option>'; }).join('') + '</datalist>' +
+        (hrMode ? TeachHR.panel(st.date, st.room) + '<div hidden>' : '') +
         '<label for="tTopic" style="margin-top:10px">เนื้อหา / เรื่องที่สอน</label><textarea id="tTopic" placeholder="เช่น การแก้สมการเชิงเส้นตัวแปรเดียว">' + esc(log ? log.topic : '') + '</textarea>' +
         '<label style="margin-top:10px">มีการบ้านหรืองานในห้องไหม?</label><div class="seg" id="tWorkSeg">' + ['ไม่มี', 'งานในห้อง', 'การบ้าน'].map(function (x) { return '<button type="button" data-w="' + x + '" class="' + ((w.type || 'ไม่มี') === x ? 'on' : '') + '">' + x + '</button>'; }).join('') + '</div>' +
-        '<div id="tWork" class="grid"' + (w.type && w.type !== 'ไม่มี' ? '' : ' hidden') + '><div style="grid-column:1/-1"><label for="tWorkD">งานอะไร</label><input id="tWorkD" value="' + esc(w.detail || '') + '" placeholder="เช่น แบบฝึกหัด 2.1 ข้อ 1–10"></div><div><label for="tDue">กำหนดส่ง</label><input type="date" id="tDue" value="' + esc(w.due || '') + '"></div></div></div>' +
+        '<div id="tWork" class="grid"' + (w.type && w.type !== 'ไม่มี' ? '' : ' hidden') + '><div style="grid-column:1/-1"><label for="tWorkD">งานอะไร</label><input id="tWorkD" value="' + esc(w.detail || '') + '" placeholder="เช่น แบบฝึกหัด 2.1 ข้อ 1–10"></div><div><label for="tDue">กำหนดส่ง</label><input type="date" id="tDue" value="' + esc(w.due || '') + '"></div></div>' + (hrMode ? '</div>' : '') + '</div>' +
         '<div class="card"><h2>การเข้าเรียน' + (st.mode === 'group' ? ' <span class="muted" style="font-size:13px">(' + st.students.length + ' คน จากหลายห้อง)</span>' : '') + '</h2><div id="tCount"></div>' + (st.students.length ? studentRows(st.students, map, ST_CLASS, 'ts') : '<div class="note warn">ยังไม่มีรายชื่อนักเรียน' + (st.mode === 'group' ? 'ในกลุ่มนี้' : 'ห้องนี้') + '</div>') +
         '<label for="tNote" style="margin-top:12px">บันทึกเพิ่มเติม</label><textarea id="tNote" placeholder="พฤติกรรม ปัญหา ข้อเสนอแนะ">' + esc(log ? log.note || '' : '') + '</textarea></div>';
       $('tCode').oninput = function () { var n = subjects[this.value.trim()]; if (n) $('tSubj').value = n; };
@@ -445,6 +447,8 @@ var Teach = (function () {
   }
   window.tsChanged = function () { if ($('tCount') && st.students.length) $('tCount').innerHTML = countLine(readRows(st.students, 'ts'), ST_CLASS); };
   function save() {
+    var hrInfo = null;
+    if ($('tHr') && typeof TeachHR !== 'undefined') { hrInfo = TeachHR.collect(); if (!hrInfo) return; $('tTopic').value = hrInfo.text; $('tWorkSeg').querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x.dataset.w === 'ไม่มี'); }); }
     var code = $('tCode').value.trim(), topic = $('tTopic').value.trim(), wt = ($('tWorkSeg').querySelector('.on') || {}).dataset;
     if (!code) return toast('กรุณากรอกรหัสวิชา', 'err');
     if (!topic) return toast('กรุณาบันทึกเนื้อหาที่สอน', 'err');
@@ -476,6 +480,7 @@ var Teach = (function () {
       }); });
     }
     $('tSave').disabled = true; loading(true, 'กำลังบันทึก…');
+    if (hrInfo) batch.commit = (function (c) { return function () { return c.call(batch).then(function () { return TeachHR.saveArea(hrInfo); }); }; })(batch.commit);
     batch.commit().then(function () { loading(false); toast(L() ? 'ส่งให้ครูยืนยันแล้ว ✓' : 'บันทึก ' + st.sel.map(pLabel).join(' + ') + ' เรียบร้อย ✓'); st.sel = []; refresh(); if (!L()) pending().then(drawPending); }).catch(function (e) { $('tSave').disabled = false; fail(e); });
   }
   return {init: init, openLog: openLog, confirm: confirmLogs, confirmAll: function () { confirmLogs(st.pend.slice(0, 30).map(function (x, i) { return i; })); }, dismiss: function () { st.warnDismissed = true; var w = $('tWarn'); if (w) w.remove(); }};
@@ -549,7 +554,8 @@ var Duty = (function () {
   }
   function load() {
     loading(true);
-    Promise.all([getRooms(), classLogsByDate(st.date), db.collection('p_daily').where('date', '==', st.date).get(), getAllTimetables(), getGroups(true).catch(function () { return []; })]).then(function (v) {
+    Promise.all([getRooms(), classLogsByDate(st.date), db.collection('p_daily').where('date', '==', st.date).get(), getAllTimetables(), getGroups(true).catch(function () { return []; }), typeof Holidays !== 'undefined' ? Holidays.load() : null]).then(function (v) {
+      var hol = typeof Holidays !== 'undefined' ? Holidays.name(st.date) : ''; // วันหยุด/งดเรียน → ไม่นับคาบค้าง
       var rooms = v[0], logs = {}, glogs = {}, daily = {}, tts = v[3], d = dow(st.date), gs = v[4], gexp = {};
       v[1].forEach(function (l) { if (l.group) (glogs[l.room + '|' + l.period] = glogs[l.room + '|' + l.period] || {})[l.group] = l; else logs[l.room + '|' + l.period] = l; });
       // กลุ่มเรียนที่ต้องมีบันทึก: กลุ่มที่มีคาบวันนี้ และมีสมาชิกจากห้องนั้น
@@ -566,7 +572,7 @@ var Duty = (function () {
           var tt = tts[r] || {}, hasTT = Object.keys(tt).length > 0, dm = (daily[r] || {}).morning, cnt = {};
           if (dm) Object.keys(dm).forEach(function (k) { cnt[dm[k]] = (cnt[dm[k]] || 0) + 1; });
           var cells = cols.map(function (p) {
-            var l = logs[r + '|' + p], expected = DAYS[d] && (hasTT ? !!tt[d + '-' + p] : p !== 'HR' && +p <= 8);
+            var l = logs[r + '|' + p], expected = !hol && DAYS[d] && (hasTT ? !!tt[d + '-' + p] : p !== 'HR' && +p <= 8);
             var ge = gexp[r + '|' + p] || [], gl = glogs[r + '|' + p] || {}, gd = Object.keys(gl);
             if (ge.length || gd.length) { // คาบวิชาเลือก/กลุ่มเรียน
               var need = {}; ge.forEach(function (g) { need[g.id] = 1; }); gd.forEach(function (id) { need[id] = 1; });
@@ -583,7 +589,7 @@ var Duty = (function () {
           return '<tr><td class="l"><b>' + esc(r) + '</b></td><td>' + stu[ri].length + '</td>' + cells.join('') + homeCell +
             '<td>' + (dm ? (cnt['มา'] || 0) + (cnt['สาย'] || 0) : '–') + '</td><td>' + (dm ? cnt['ขาด'] || 0 : '–') + '</td><td>' + (dm ? cnt['ลาป่วย'] || 0 : '–') + '</td><td>' + (dm ? cnt['ลากิจ'] || 0 : '–') + '</td><td>' + (dm ? cnt['กิจกรรม'] || 0 : '–') + '</td></tr>';
         });
-        $('dBody').innerHTML = '<div class="card"><div class="kpi"><div><b>' + done + '</b><span>คาบที่บันทึกแล้ว</span></div><div><b>' + missing + '</b><span>คาบที่ยังไม่บันทึก (ตามตาราง)</span></div><div><b>' + Object.keys(daily).length + '/' + rooms.length + '</b><span>ห้องที่หัวหน้าห้องเช็คแล้ว</span></div></div>' +
+        $('dBody').innerHTML = (hol ? '<div class="note info">📅 <b>' + esc(hol) + '</b> — วันหยุด/งดเรียน ไม่นับเป็นคาบค้าง</div>' : '') + '<div class="card"><div class="kpi"><div><b>' + done + '</b><span>คาบที่บันทึกแล้ว</span></div><div><b>' + missing + '</b><span>คาบที่ยังไม่บันทึก (ตามตาราง)</span></div><div><b>' + Object.keys(daily).length + '/' + rooms.length + '</b><span>ห้องที่หัวหน้าห้องเช็คแล้ว</span></div></div>' +
           '<div class="tbl-wrap"><table><thead><tr><th>ห้อง</th><th>นักเรียน</th>' + cols.map(function (p) { return '<th>' + (p === 'HR' ? 'โฮมรูม' : p) + '</th>'; }).join('') + '<th>' + HOME_LABEL + '</th><th>มา</th><th>ขาด</th><th>ลาป่วย</th><th>ลากิจ</th><th>กิจกรรม</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>' +
           '<p class="muted">มา/ขาด/ลา นับจากการเช็คชื่อตอนเช้าของหัวหน้าห้อง</p></div>';
       });
@@ -802,19 +808,28 @@ var Stats = (function () {
     $('sBody').innerHTML = '<div class="card"><h2>นักเรียนกลุ่มเสี่ยงที่ขาดเรียนบ่อย</h2><p class="muted">นับเฉพาะ "ขาด" และ "โดด" · ร้อยละการเข้าเรียน: ปกติ ≥90% · เสี่ยง 85–89% · ติดต่อครูผู้สอน 80–84% · หมดสิทธิ์สอบ (มส.) &lt;80%</p><div class="grid">' +
       sel('rLv', 'ระดับชั้น', uniq(function (x) { return level(x.room); })) + sel('rRoom', 'ห้อง', uniq(function (x) { return x.room; })) + sel('rCode', 'รหัสวิชา', uniq(function (x) { return x.code; })) +
       '<div><label for="rEv">ผลการประเมิน</label><select id="rEv"><option value="!">ไม่ปกติทั้งหมด</option><option value="">ทั้งหมด</option>' + EVAL.map(function (e) { return '<option>' + e.label + '</option>'; }).join('') + '</select></div>' +
-      '<div><label for="rQ">ค้นหาชื่อ</label><input id="rQ" type="search"></div></div><div id="rOut" style="margin-top:12px"></div></div>';
+      '<div><label for="rQ">ค้นหาชื่อ</label><input id="rQ" type="search"></div><span id="rMineBox" style="display:contents"></span></div><div id="rOut" style="margin-top:12px"></div></div>';
     var draw = function () {
       var lv = $('rLv').value, rm = $('rRoom').value, cd = $('rCode').value, ev = $('rEv').value, q = $('rQ').value.trim();
-      var list = all.filter(function (x) { return (!lv || level(x.room) === lv) && (!rm || x.room === rm) && (!cd || x.code === cd) && (ev === '!' ? x.ev.label !== 'ปกติ' : !ev || x.ev.label === ev) && (!q || x.name.indexOf(q) >= 0); });
+      var list = all.filter(function (x) { return (!lv || level(x.room) === lv) && (!rm || x.room === rm) && (!cd || x.code === cd) && (ev === '!' ? x.ev.label !== 'ปกติ' : !ev || x.ev.label === ev) && (!q || x.name.indexOf(q) >= 0) && (typeof RiskCare === 'undefined' || RiskCare.mineOk(x.room)); });
+      var care = typeof RiskCare !== 'undefined'; window.RISK_LIST = list;
       var head = ['ชื่อ–นามสกุล', 'ระดับชั้น', 'ห้อง', 'เลขที่', 'รหัสวิชา', 'ครูผู้สอน', 'จำนวนคาบ', 'ขาด/โดด (ครั้ง)', 'ร้อยละที่ขาด (%)', 'ผลการประเมิน'];
-      var rows = list.map(function (x) { return [x.name, level(x.room), x.room, Number(x.no) || x.no, x.code, Object.keys(x.teachers).join(', '), x.n, x.a, Math.round(x.pa * 100) / 100, {html: '<span class="pill ' + x.ev.cls + '">' + x.ev.label + '</span>', text: x.ev.label}]; });
+      if (care) head.push('การช่วยเหลือ');
+      var rows_i = 0, rows = list.map(function (x) { return [x.name, level(x.room), x.room, Number(x.no) || x.no, x.code, Object.keys(x.teachers).join(', '), x.n, x.a, Math.round(x.pa * 100) / 100, {html: '<span class="pill ' + x.ev.cls + '">' + x.ev.label + '</span>', text: x.ev.label}].concat(care ? [RiskCare.cell(x, rows_i++)] : []); });
       setSheet('นักเรียนกลุ่มเสี่ยง', head, rows, {left: [0, 5]});
       var c = {}; all.forEach(function (x) { c[x.ev.label] = (c[x.ev.label] || 0) + 1; });
-      $('rOut').innerHTML = '<div class="kpi">' + EVAL.map(function (e) { return '<div><b>' + (c[e.label] || 0) + '</b><span>' + e.label + ' (คน-วิชา)</span></div>'; }).join('') + '</div>' + tableHTML(head, rows, {left: [0, 5]}) + exportBar();
+      $('rOut').innerHTML = '<div class="kpi">' + EVAL.map(function (e) { return '<div><b>' + (c[e.label] || 0) + '</b><span>' + e.label + ' (คน-วิชา)</span></div>'; }).join('') + '</div>' + tableHTML(head, rows, {left: [0, 5]}) + exportBar() + (care ? RiskCare.bar(list.filter(function (x) { return x.ev.label !== 'ปกติ'; }).length) : '');
     };
     ['rLv', 'rRoom', 'rCode', 'rEv'].forEach(function (id) { $(id).onchange = draw; }); $('rQ').oninput = draw; draw();
+    // ต่อยอด (risk.js): ห้องที่ปรึกษาของฉัน + บันทึกการช่วยเหลือ + เอกสาร
+    if (typeof RiskCare !== 'undefined') RiskCare.load(termFor(st.end || today())).then(function () {
+      if (!$('rMineBox')) return;
+      if (!RiskCare.loaded && RiskCare.myRooms().length) RiskCare.mine = true; RiskCare.loaded = true;
+      $('rMineBox').innerHTML = RiskCare.mineBox(); if ($('rMine')) $('rMine').onchange = function () { RiskCare.mine = this.checked; draw(); };
+      RiskCare.onChange = draw; draw();
+    });
   }
-  return {init: init, excel: excel, print: print};
+  return {init: init, excel: excel, print: print, range: function () { return {start: st.start, end: st.end}; }};
 })();
 
 // =====================================================================
@@ -822,7 +837,7 @@ var Stats = (function () {
 // =====================================================================
 var Admin = (function () {
   var tab = 'teachers';
-  var TABS = [['teachers', '👩‍🏫 ครู / รายวิชา'], ['leaders', '🧑‍🎓 หัวหน้าห้อง'], ['students', '📋 นักเรียน'], ['groups', '📚 วิชาเลือก / กลุ่มเรียน'], ['timetable', '🗓️ ตารางเรียน'], ['rooms', '🏫 ห้องเรียน']];
+  var TABS = [['teachers', '👩‍🏫 ครู / รายวิชา'], ['leaders', '🧑‍🎓 หัวหน้าห้อง'], ['students', '📋 นักเรียน'], ['groups', '📚 วิชาเลือก / กลุ่มเรียน'], ['holidays', '📅 วันหยุด'], ['timetable', '🗓️ ตารางเรียน'], ['rooms', '🏫 ห้องเรียน']];
   function init() {
     $('v-admin').innerHTML = '<div class="card"><h2>⚙️ ผู้ดูแลระบบ · บันทึกเวลาเรียน</h2><div class="chips" id="aTabs">' + TABS.map(function (t) { return '<button type="button" class="chip" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div></div><div id="aBody"></div>';
     $('aTabs').querySelectorAll('.chip').forEach(function (b) { b.onclick = function () { tab = b.dataset.t; render(); }; });
@@ -830,7 +845,7 @@ var Admin = (function () {
   }
   function render() {
     $('aTabs').querySelectorAll('.chip').forEach(function (b) { b.classList.toggle('on', b.dataset.t === tab); });
-    ({teachers: teachers, leaders: leaders, students: students, groups: groups, timetable: timetable, rooms: rooms})[tab]();
+    ({teachers: teachers, leaders: leaders, students: students, groups: groups, timetable: timetable, rooms: rooms, holidays: function () { $('aBody').innerHTML = ''; Holidays.admin(); }})[tab]();
   }
   // ---- ครู + รายวิชา ----
   function teachers() {
@@ -907,7 +922,7 @@ var Admin = (function () {
   function students() {
     getRooms().then(function (rs) {
       $('aBody').innerHTML = '<div class="card"><h2>นักเรียน · เลขประจำตัว · สถานะ</h2><div class="row"><div style="flex:1;min-width:150px"><label for="asRoom">ห้อง</label><select id="asRoom">' + rs.map(function (r) { return '<option>' + esc(r) + '</option>'; }).join('') + '</select></div><button class="btn" style="margin-top:20px" id="asSync">↻ ดึงรายชื่อล่าสุดจากระบบเช็คเข้าแถว</button></div>' +
-        '<p class="muted">รายชื่อมาจากระบบเช็คเข้าแถวอัตโนมัติ · สถานะ ขาดเรียนนาน / พักการเรียน / ลาออก / ไม่มีตัวตน จะถูกล็อกในการเช็คชื่อทุกคาบจนกว่าจะเปลี่ยนกลับเป็นปกติ</p><div id="asList"></div></div>' +
+        '<p class="muted">🔗 <b>ทะเบียนเดียวกับระบบเช็คเข้าแถว</b> — เพิ่ม/ลบ/แก้ที่หน้าไหนก็ตรงกันทั้ง 2 ระบบ · สถานะ ขาดเรียนนาน / พักการเรียน / ลาออก / ไม่มีตัวตน จะถูกล็อกในการเช็คชื่อทุกคาบจนกว่าจะเปลี่ยนกลับเป็นปกติ</p><div id="asList"></div></div>' +
         '<div class="card"><h2>นำเข้าจาก Excel</h2><p class="muted">คัดลอกจาก Excel มาวางได้ 3 แบบ<br>① <b>เลขประจำตัวคอลัมน์เดียว</b> เรียงตามเลขที่ 1, 2, 3… (ง่ายสุด)<br>② <b>เลขที่ | เลขประจำตัว</b><br>③ <b>เลขที่ | เลขประจำตัว | ชื่อ–นามสกุล | สถานะ</b> (ถ้าเลขที่ไม่มีในห้อง จะเพิ่มเป็นนักเรียนใหม่)</p><textarea id="asPaste" style="min-height:140px" placeholder="12345&#10;12346&#10;12347"></textarea><button class="btn pri" style="width:100%;margin-top:10px" id="asImport">นำเข้า</button></div>';
       $('asRoom').onchange = draw;
       $('asSync').onclick = function () { loading(true); syncStudents(true).then(function () { cache = {rooms: cache.rooms, groups: cache.groups}; loading(false); toast('ดึงรายชื่อล่าสุดแล้ว ✓'); draw(); }).catch(fail); };
@@ -930,8 +945,8 @@ var Admin = (function () {
   }
   function delStu(i) {
     collect(); var s = asList[i], room = $('asRoom').value;
-    if (!confirm('ลบ "' + s.name + '" (เลขที่ ' + s.no + ') ออกจากห้อง ' + room + ' ในส่วนบันทึกเวลาเรียน?' + (s.extra ? '' : '\n\nชื่อนี้มาจากระบบเช็คเข้าแถว จะถูกซ่อนในส่วนนี้ (กู้คืนได้) ถ้าต้องการลบถาวรทั้ง 2 ระบบ ให้ลบที่ระบบเช็คเข้าแถว → จัดการนักเรียน'))) return;
-    if (s.extra) asList.splice(i, 1); else s.hidden = true;
+    if (!confirm('ลบ "' + s.name + '" (เลขที่ ' + s.no + ') ออกจากห้อง ' + room + '?\n\nทะเบียนนักเรียนใช้ร่วมกัน: ชื่อจะหายจากทั้งระบบเช็คเข้าแถวและบันทึกเวลาเรียน (กู้คืนได้ในหัวข้อ "ชื่อที่ลบไว้") · ประวัติการเช็คชื่อเดิมยังอยู่ครบ')) return;
+    s.hidden = true; // ลบออกจากทะเบียนกลาง (ทั้งระบบเช็คเข้าแถวและบันทึกเวลาเรียน) · กู้คืนได้
     saveList(room, asList);
   }
   function restoreStu(i) { collect(); delete asList[i].hidden; saveList($('asRoom').value, asList); }
@@ -939,7 +954,15 @@ var Admin = (function () {
     var seen = {}, dup = list.find(function (s) { if (!s.sid) return false; if (seen[s.sid]) return true; seen[s.sid] = 1; return false; });
     if (dup) return toast('เลขประจำตัว ' + dup.sid + ' ซ้ำกัน', 'err');
     loading(true);
-    db.doc('p_students/' + roomId(room)).set({room: room, students: list.slice().sort(byNo), syncedAt: FV.serverTimestamp()}).then(function () { clearStu(room); loading(false); toast('บันทึกแล้ว ✓'); draw(); }).catch(fail);
+    var keep = list.filter(function (x) { return !x.hidden; }).map(function (x) { return {no: String(x.no), name: x.name, room: room, sid: x.sid || '', status: x.status || 'ปกติ'}; });
+    db.runTransaction(function (tx) { // ทะเบียนกลาง roster/all = รายชื่อเดียวกับหน้าเช็คเข้าแถว
+      var ref = db.doc('roster/all');
+      return tx.get(ref).then(function (r) {
+        var all = (r.exists && r.data().students || []).filter(function (x) { return String(x.room || '').trim() !== room; }).concat(keep);
+        tx.set(ref, {students: all, updatedAt: FV.serverTimestamp()});
+      });
+    }).then(function () { list.forEach(function (x) { delete x.extra; }); return db.doc('p_students/' + roomId(room)).set({room: room, students: list.slice().sort(byNo), syncedAt: FV.serverTimestamp()}); })
+    .then(function () { return db.doc('p_students/_sync').set({rosterAt: Date.now() + 5000}); }).then(function () { clearStu(room); loading(false); toast('บันทึกแล้ว ✓'); draw(); }).catch(fail);
   }
   // วางได้ 3 แบบ: (1) เลขประจำตัวคอลัมน์เดียว เรียงตามเลขที่ (2) เลขที่ | เลขประจำตัว (3) เลขที่ | เลขประจำตัว | ชื่อ | สถานะ
   function importPaste() {
